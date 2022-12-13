@@ -15,7 +15,16 @@
     (set-face-attribute
      'line-number-current-line nil
      :height (truncate (* 0.75 (face-attribute 'default :height)))
-     :weight 'bold)))
+     :weight 'bold)
+
+    ;; (set-frame-font "Sarasa Mono K Nerd Font" nil t)
+    (set-face-font 'fixed-pitch "Sarasa Mono K Nerd Font")
+    (set-face-font 'fixed-pitch-serif "KoPubWorldBatang")
+    (set-face-font 'variable-pitch "Source Han Sans K VF")
+    (set-face-attribute 'default nil :family "Sarasa Mono K Nerd Font" :height 136)
+    (set-fontset-font t 'hangul (font-spec :family "Sarasa Mono K Nerd Font" :spacing 'm :size 13.5 :avgwidth 13.5))
+
+    ))
 
 ;; Apply tweaks
 (add-hook 'after-init-hook #'+theme--tweaks-h)

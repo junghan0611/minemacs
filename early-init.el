@@ -23,11 +23,11 @@
 (push '(right-fringe . 8) default-frame-alist)
 
 (when (and (>= emacs-major-version 29) nil)
-  (push '(alpha-background . 90) default-frame-alist))
+  (push '(alpha-background . 50) default-frame-alist))
 
-(setq tool-bar-mode nil
-      menu-bar-mode nil
-      scroll-bar-mode nil)
+(tool-bar-mode -1)
+(menu-bar-mode -1)
+(scroll-bar-mode -1)
 
 ;; Load MinEmacs variables first
 (load (concat user-emacs-directory "core/me-vars.el") nil t)

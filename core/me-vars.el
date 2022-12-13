@@ -9,7 +9,7 @@
 (defconst minemacs-config-dir
   (file-name-as-directory
    (or (getenv "MINEMACS_DIR")
-       "~/.minemacs.d/")))
+       "~/.emacs.minemacs/config/")))
 
 (defconst minemacs-debug
   (not (null (or (getenv "MINEMACS_DEBUG") init-file-debug))))

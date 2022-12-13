@@ -40,3 +40,11 @@ directory:
 
 This repository contains skeleton files for [[file:skel/modules.el][modules.el]] and [[file:skel/config.el][config.el]] (under
 [[file:skel][skel/]]).
+
+#+begin_src org :tangle no
+  *한영 자간 확인*
+  +------------+------------+
+  | 일이삼사오 | 일이삼사오 |
+  | abcdefghij | abcdefghij |
+  +------------+------------+
+#+end_src
