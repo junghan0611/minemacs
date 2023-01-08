@@ -6,22 +6,37 @@
 
 
 (use-package oc
+  :straight (:type built-in)
   :after org
   :custom
   (org-cite-export-processors '((latex biblatex) (t csl)))
   (org-support-shift-select t)
-  :config
+  :general
   (+map-local :keymaps 'org-mode-map
     "C" #'org-cite-insert))
 
 (use-package oc-csl
+  :straight (:type built-in)
   :after oc)
 
 (use-package oc-natbib
+  :straight (:type built-in)
   :after oc)
 
 (use-package oc-biblatex
+  :straight (:type built-in)
   :after oc)
+
+(use-package zotxt
+  :straight t
+  :preface
+  (defconst ZOTERO-P (executable-find "zotero"))
+  :when ZOTERO-P
+  :general
+  (+map-local :keymaps 'org-mode-map
+    "z" #'org-zotxt-mode)
+  (+map-local :keymaps 'markdown-mode-map
+    "z" #'zotxt-citekey-mode))
 
 (use-package citar
   :straight t

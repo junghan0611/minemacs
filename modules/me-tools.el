@@ -11,6 +11,7 @@
 (use-package affe
   :straight t
   :after consult orderless
+  :demand t
   :general
   (+map
     "sg" #'affe-grep
@@ -43,17 +44,48 @@
 (use-package vterm
   :straight t
   :general
-  (+map "ot" #'vterm)
+  (+map
+    "ot" '(nil :wk "vterm")
+    "otT" #'vterm)
   :init
   ;; Hide vterm install window
   (add-to-list
    'display-buffer-alist
-   `(" *Install vterm*"
+   `(" \\*Install vterm\\*"
      (display-buffer-no-window)
      (allow-no-window . t)))
   :custom
   (vterm-always-compile-module t)
-  (vterm-max-scrollback 5000))
+  (vterm-max-scrollback 5000)
+  :config
+  (define-key vterm-mode-map [return] #'vterm-send-return))
+
+(use-package multi-vterm
+  :straight t
+  :general
+  (+map
+    "ott" #'multi-vterm
+    "otd" #'multi-vterm-dedicated-toggle
+    "otp" #'multi-vterm-project)
+  :custom
+  (multi-vterm-dedicated-window-height-percent 30)
+  :init
+  ;; Show at buttom
+  (add-to-list
+   'display-buffer-alist
+   `("\\*vterminal - .*\\*" ;; multi-vterm-project
+     (display-buffer-reuse-window display-buffer-in-direction)
+     (direction . bottom)
+     (dedicated . t)
+     (reusable-frames . visible)
+     (window-height . 0.3)))
+  :config
+  (+map-key
+    :keymaps 'vterm-mode-map
+    ",c" #'multi-vterm
+    ",n" #'multi-vterm-next
+    ",p" #'multi-vterm-prev
+    "<return>" #'evil-insert-resume))
 
 (use-package docker
   :straight t
@@ -77,7 +109,7 @@
 (use-package pkgbuild-mode
   :straight t
   :defer t
-  :config
+  :general
   (+map-local :keymaps 'pkgbuild-mode-map
     "b" #'pkgbuild-makepkg
     "a" #'pkgbuild-tar
@@ -90,7 +122,7 @@
 (use-package journalctl-mode
   :straight t
   :defer t
-  :config
+  :general
   (+map-local :keymaps 'journalctl-mode-map
     "J" #'journalctl-next-chunk
     "K" #'journalctl-previous-chunk))

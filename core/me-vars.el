@@ -20,6 +20,10 @@
   (not (null (or (getenv "MINEMACS_VERBOSE") minemacs-debug)))
   "MinEmacs is started in verbose mode.")
 
+(defconst minemacs-not-lazy
+  (or (daemonp) (not (null (getenv "MINEMACS_NOT_LAZY"))))
+  "Load lazy packages (minemacs-lazy-hook) immediately.")
+
 (defcustom minemacs-msg-level
   (let ((level (string-to-number (or (getenv "MINEMACS_MSG_LEVEL") ""))))
     (cond (minemacs-verbose 4)
@@ -52,6 +56,9 @@
 (defconst os/win (not (null (memq system-type '(cygwin windows-nt ms-dos)))))
 (defconst os/mac (eq system-type 'darwin))
 
+;; Should return x86_64, aarch64, ...
+(defconst sys/arch (intern (substring system-configuration 0 (string-search "-" system-configuration))))
+
 (defconst emacs/features
   (mapcar #'intern
           (mapcar (apply-partially #'string-replace "_" "-")
@@ -79,7 +86,8 @@ Compiled from the `system-configuration-features'.")
 
 (defcustom minemacs-before-user-config-hook nil
   "This hook will be run after loading modules and before loading user config.
-Hooks running order:
+
+MinEmacs hooks will be run in this order:
 1. minemacs-before-user-config-hook
 2. minemacs-after-startup-hook
 3. minemacs-lazy-hook"
@@ -87,12 +95,22 @@ Hooks running order:
   :type 'hook)
 
 (defcustom minemacs-after-startup-hook nil
-  "This hook will be run after loading Emacs."
+  "This hook will be run after loading Emacs.
+
+MinEmacs hooks will be run in this order:
+1. minemacs-before-user-config-hook
+2. minemacs-after-startup-hook
+3. minemacs-lazy-hook"
   :group 'minemacs
   :type 'hook)
 
 (defcustom minemacs-lazy-hook nil
-  "This hook will be run after loading Emacs, with laziness."
+  "This hook will be run after loading Emacs, with laziness.
+
+MinEmacs hooks will be run in this order:
+1. minemacs-before-user-config-hook
+2. minemacs-after-startup-hook
+3. minemacs-lazy-hook"
   :group 'minemacs
   :type 'hook)
 
@@ -104,9 +122,9 @@ Hooks running order:
                        (os/mac "monospace"))))
   (defconst minemacs-default-fonts
     `(:font-family ,mono-font
-      :font-size 15
+      :font-size 14
       :variable-pitch-font-family ,varp-font
-      :variable-pitch-font-size 15)
+      :variable-pitch-font-size 14)
     "Default fonts of MinEmacs."))
 
 (defvar minemacs-deps-executables
@@ -119,7 +137,7 @@ Hooks running order:
   "A list of programs I use within Emacs.")
 
 (defvar +env-save-vars
-  '("PATH" "MANPATH" "CMAKE_PREFIX_PATH" "PKG_CONFIG_PATH")
+  '("PATH" "MANPATH" "CMAKE_PREFIX_PATH" "PKG_CONFIG_PATH" "LSP_USE_PLISTS")
   "List of environment variables saved by `+env-save'.
 You need to run Emacs from terminal to get the environment variables.
 MinEmacs then save them to be used in GUI sessions as well.")

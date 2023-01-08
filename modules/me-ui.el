@@ -71,15 +71,15 @@
               (defun +writeroom--scale-up-latex-h ()
                 (setq-local +writeroom-org-format-latex-scale
                             (plist-get org-format-latex-options :scale))
-                (setq org-format-latex-options
-                      (plist-put org-format-latex-options
-                                 :scale (if (+emacs-features-p 'pgtk) 1.4 2.1)))))
+                (set (make-local-variable 'org-format-latex-options)
+                     (plist-put org-format-latex-options
+                                :scale (if (+emacs-features-p 'pgtk) 1.4 2.1)))))
 
     (add-hook 'writeroom-mode-disable-hook
               (defun +writeroom--scale-down-latex-h ()
-                (setq org-format-latex-options
-                      (plist-put org-format-latex-options
-                                 :scale (or +writeroom-org-format-latex-scale 1.0)))))))
+                (set (make-local-variable 'org-format-latex-options)
+                     (plist-put org-format-latex-options
+                                :scale (or +writeroom-org-format-latex-scale 1.0)))))))
 
 (use-package mixed-pitch
   :straight t
@@ -96,24 +96,34 @@
                    org-drawer
                    org-special-keyword
                    org-property-value
+                   org-column-title
+                   org-column
+                   org-cite
                    org-cite-key
                    org-ref-cite-face
                    org-tag
+                   org-table
                    org-tag-group
+                   org-formula
+                   org-meta-line
+                   org-document-info-keyword
                    org-block
+                   org-block-begin-line
+                   org-block-end-line
                    org-inline-src-block
-                   org-todo-keyword-todo
+                   org-src
+                   org-verbatim
+                   org-code
+                   org-quote
+                   org-verse
                    org-latex-and-related
                    org-macro
                    org-link
-                   org-todo-keyword-habt
-                   org-todo-keyword-done
-                   org-todo-keyword-wait
-                   org-todo-keyword-kill
-                   org-todo-keyword-outd
+                   org-sexp-date
                    org-todo
                    org-done
-                   font-lock-comment-face)))))
+                   font-lock-comment-face
+                   font-lock-comment-delimiter-face)))))
 
 (use-package focus
   :straight t

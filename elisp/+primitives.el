@@ -81,8 +81,9 @@
 ;;;###autoload
 (defmacro +plist-push! (plist &rest key-vals)
   "Push KEY-VALS to PLIST."
+  (declare (indent 1))
   (let ((out (list 'progn)))
-    (while (> (length key-vals) 0)
+    (while (length> key-vals 0)
       (let ((key (pop key-vals))
             (val (pop key-vals)))
         (add-to-list
@@ -114,6 +115,26 @@ Adapted from `org-plist-delete'."
           (setq p (plist-put p (car plist) (nth 1 plist))))
       (setq plist (cddr plist)))
     p))
+
+;;;###autoload
+(defun +plist-to-alist (plist &optional trim-col)
+  (let ((res '()))
+    (while plist
+      (let* ((key (pop plist))
+             (val (pop plist))
+             (key (if (and trim-col (string-prefix-p ":" (symbol-name key)))
+                      (intern (substring (symbol-name key) 1))
+                    key)))
+        (push (cons key val) res)))
+    (nreverse res)))
+
+;;;###autoload
+(defun +alist-to-plist (alist &optional add-col)
+  (let ((res '()))
+    (dolist (x alist)
+      (push (if add-col (intern (format ":%s" (car x))) (car x)) res)
+      (push (cdr x) res))
+    (nreverse res)))
 
 ;;; === Symbols ===
 

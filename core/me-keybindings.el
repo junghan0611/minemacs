@@ -60,20 +60,22 @@
 
   (+map
     ;; ====== Top level functions ======
-    "TAB" '(switch-to-next-buffer :wk "Next buffer")
-    "<backtab>" '(switch-to-prev-buffer :wk "Previous buffer")
     "SPC" '(execute-extended-command :wk "M-x")
+    ">"   '(switch-to-next-buffer :wk "Next buffer")
+    "<"   '(switch-to-prev-buffer :wk "Previous buffer")
     ";"   '(pp-eval-expression :wk "Eval expression")
     "X"   #'org-capture
-    "."   #'find-file
     "u"   '(universal-argument :wk "C-u")
 
     ;; ====== Quit/Session ======
     "q"   '(nil :wk "quit/session")
     "qq"  #'save-buffers-kill-terminal
     "qQ"  #'kill-emacs
-    "qs"  #'server-start
+    "qS"  #'server-start
     "qR"  #'recover-session
+    "qd"  #'desktop-read
+    "qD"  #'desktop-lazy-complete
+    "qs"  #'desktop-save
 
     ;; ====== Files ======
     "f"   '(nil :wk "file")
@@ -96,9 +98,8 @@
     "bu"  #'+sudo-save-buffer
     "bS"  #'save-some-buffers
     "bs"  #'scratch-buffer
+    "bM"  #'view-echo-area-messages
     "bA"  #'kill-some-buffers
-    "bm"  #'bookmark-set
-    "bM"  #'bookmark-delete
     "bk"  `(,(+cmdfy! (kill-buffer (current-buffer)))
             :wk "Kill this buffer")
     "bK"  `(,(+cmdfy! (+kill-buffer-and-its-windows (current-buffer)))
@@ -106,6 +107,10 @@
     "bN"  '(evil-buffer-new :wk "New buffer")
     "br"  '(revert-buffer :wk "Revert")
     "bR"  '(rename-buffer :wk "Rename")
+    ;; Bookmarks
+    "bm"  '(nil :wk "bookmark")
+    "bmm"  #'bookmark-set
+    "bmd"  #'bookmark-delete
     ;; Files / Local variables
     "bv"  '(nil :wk "locals")
     "bvv" '(add-file-local-variable :wk "Add")
@@ -153,6 +158,9 @@
     ;; ====== VC ======
     "g"   '(nil :wk "git/vc")
 
+    ;; ====== Workspaces ======
+    "TAB" '(nil :wk "workspace")
+
     ;; ====== Toggle ======
     "t"   '(nil :wk "toggle")
     "td"  '(toggle-debug-on-error :wk "Debug on error")
@@ -160,6 +168,7 @@
     "tl"  #'follow-mode
     "tM"  '(+messages-auto-tail-toggle :wk "Auto-tail *Messages*")
     "tV"  '(netextender-toggle :wk "NetExtender")
+    "tv"  #'visible-mode
 
     ;; ====== Code ======
     "c"   '(nil :wk "code")

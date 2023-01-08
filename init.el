@@ -5,139 +5,137 @@
 ;; Author: Abdelhak Bougouffa <abougouffa@fedoraproject.org>
 
 ;; Check if Emacs version is supported
-(let ((min-version "28.0"))
+(let ((min-version "28.2"))
   (when (version< emacs-version min-version)
     (error "Emacs v%s is not supported, MinEmacs requires v%s or higher"
            emacs-version min-version)))
 
-;; Load vars if they have not been loaded (if Emacs has been loaded
-;; directly from "init.el" without passing by "early-init.el")
-(unless (featurep 'me-vars)
-  ;; Load MinEmacs variables first
-  (load (concat user-emacs-directory "core/me-vars.el") nil t))
+;; Don't attempt to find/apply special file handlers to files loaded during
+;; startup, this should seedup the startup process.
+(let ((file-name-handler-alist nil))
+  ;; Load vars if they have not been loaded (if Emacs has been loaded directly
+  ;; from "init.el" without passing by "early-init.el")
+  (unless (featurep 'me-vars)
+    ;; Load MinEmacs variables first
+    (load (concat user-emacs-directory "core/me-vars.el") nil t))
 
-;; Load Emacs 29 backports for earlier Emacs versions
-(when (< emacs-major-version 29)
-  (load (concat minemacs-modules-dir "me-backports-29.el") nil (not minemacs-verbose)))
+  ;; Load Emacs 29 backports for earlier Emacs versions
+  (when (< emacs-major-version 29)
+    (load (concat minemacs-modules-dir "me-backports-29.el") nil (not minemacs-verbose)))
 
-(setq
- ;; Enable debugging on error when env variable "MINEMACS_DEBUG" is defined
- debug-on-error minemacs-debug
- ;; Make byte compilation less verbose
- byte-compile-warnings minemacs-verbose
- byte-compile-verbose minemacs-verbose)
-
-;;; Native compilation settings
-(when (featurep 'native-compile)
   (setq
-   ;; Silence compiler warnings as they can be pretty disruptive
-   native-comp-async-report-warnings-errors (when minemacs-verbose 'silent)
-   native-comp-verbose (if minemacs-verbose 3 0)
-   ;; Make native compilation happens asynchronously
-   inhibit-automatic-native-compilation nil)
+   ;; Enable debugging on error when env variable "MINEMACS_DEBUG" is defined
+   debug-on-error minemacs-debug
+   ;; Make byte compilation less verbose
+   byte-compile-warnings minemacs-verbose
+   byte-compile-verbose minemacs-verbose)
 
-  ;; Set the right directory to store the native compilation cache
-  ;; NOTE: The `startup-redirect-eln-cache' function is available in Emacs 29,
-  ;; it is back ported in MinEmacs for Emacs 28.
-  (startup-redirect-eln-cache (concat minemacs-cache-dir "eln/")))
+  ;; Native compilation settings
+  (when (featurep 'native-compile)
+    (setq
+     ;; Silence compiler warnings as they can be pretty disruptive
+     native-comp-async-report-warnings-errors (when minemacs-verbose 'silent)
+     native-comp-verbose (if minemacs-verbose 3 0)
+     ;; Make native compilation happens asynchronously
+     inhibit-automatic-native-compilation nil)
 
-;; Add direcotries to `load-path'
-(add-to-list 'load-path minemacs-core-dir)
-(add-to-list 'load-path minemacs-elisp-dir)
-(add-to-list 'load-path minemacs-extras-dir)
+    ;; Set the right directory to store the native compilation cache
+    ;; NOTE: The `startup-redirect-eln-cache' function is available in Emacs 29,
+    ;; it is back ported in MinEmacs for Emacs 28.
+    (startup-redirect-eln-cache (concat minemacs-cache-dir "eln/")))
 
-(defun minemacs-generate-autoloads ()
-  "Generate MinEmacs' autoloads file."
-  (interactive)
-  (when (file-exists-p minemacs-autoloads-file)
-    (delete-file minemacs-autoloads-file))
+  ;; Add direcotries to `load-path'
+  (add-to-list 'load-path minemacs-core-dir)
+  (add-to-list 'load-path minemacs-elisp-dir)
+  (add-to-list 'load-path minemacs-extras-dir)
 
-  (let ((autoload-dirs nil))
-    (dolist (dir (list minemacs-core-dir minemacs-extras-dir minemacs-elisp-dir))
-      (when (file-directory-p dir)
-        (setq autoload-dirs
-              (append autoload-dirs
-                      (list dir)
-                      (seq-filter
-                       #'file-directory-p
-                       (directory-files-recursively dir ".*" t))))))
-    (loaddefs-generate autoload-dirs minemacs-autoloads-file)))
+  (defun minemacs-generate-autoloads ()
+    "Generate MinEmacs' autoloads file."
+    (interactive)
+    (when (file-exists-p minemacs-autoloads-file)
+      (delete-file minemacs-autoloads-file))
 
-;; Auto-loads
-(unless (file-exists-p minemacs-autoloads-file)
-  (minemacs-generate-autoloads))
+    (let ((autoload-dirs nil))
+      (dolist (dir (list minemacs-core-dir minemacs-extras-dir minemacs-elisp-dir))
+        (when (file-directory-p dir)
+          (setq autoload-dirs
+                (append autoload-dirs
+                        (list dir)
+                        (seq-filter
+                         #'file-directory-p
+                         (directory-files-recursively dir ".*" t))))))
+      (loaddefs-generate autoload-dirs minemacs-autoloads-file)))
 
-;; Load autoloads file
-(load minemacs-autoloads-file nil (not minemacs-verbose))
+  ;; Generate auto-loads if they don't exist
+  (unless (file-exists-p minemacs-autoloads-file)
+    (minemacs-generate-autoloads))
 
-;; Load environment variables when available
-(+env-load)
+  ;; Load autoloads file
+  (load minemacs-autoloads-file nil (not minemacs-verbose))
 
-;; Syncronization point!
-;; Profile emacs startup and trigger `minemacs-loaded' 5s after loading Emacs
-(add-hook
- 'emacs-startup-hook
- (defun +minemacs--loaded-h ()
-   (+log! "=============== Loaded Emacs ===============")
-   (+info! "Loaded Emacs in %s." (emacs-init-time))
+  ;; Load environment variables when available
+  (+env-load)
 
-   (+log! "Applying `minemacs-fonts'.")
-   ;; Load fonts, values are read from `minemacs-fonts' if set in config.el,
-   ;; otherwise, they are read from the default `minemacs-default-fonts'.
-   (+set-fonts)
+  ;; Syncronization point!
+  ;; Profile emacs startup and trigger `minemacs-loaded' 5s after loading Emacs
+  (add-hook
+   'emacs-startup-hook
+   (defun +minemacs--loaded-h ()
+     (+log! "=============== Loaded Emacs ===============")
+     (+info! "Loaded Emacs in %s." (emacs-init-time))
 
-   (+log! "Setting scratch buffer content.")
-   ;; Print load time, and a quote to *scratch*
-   (with-current-buffer (get-scratch-buffer-create)
-     (erase-buffer)
-     (insert (format
-              ";; MinEmacs loaded in %.2fs with %d garbage collection%s done!\n"
-              (string-to-number (car (string-split (emacs-init-time))))
-              gcs-done (if (> gcs-done 1) "s" "")))
-     (insert ";; ==============================\n")
-     ;; Insert some quote from fortune
-     (when (executable-find "fortune")
-       (insert (string-join
-                (mapcar (lambda (l) (concat ";; " l))
-                        (string-lines (shell-command-to-string "fortune")))
-                "\n"))
-       (insert "\n;; ==============================\n"))
-     ;; Set initial scratch message.
-     (setq initial-scratch-message (buffer-string)))
+     (+log! "Applying `minemacs-fonts'.")
+     ;; Load fonts, values are read from `minemacs-fonts' if set in config.el,
+     ;; otherwise, they are read from the default `minemacs-default-fonts'.
+     (+set-fonts)
 
-   ;; In `me-defaults', the `initial-major-mode' is set to `fundamental-mode'
-   ;; to enhance startup time. However, I like to use the scratch buffer to
-   ;; evaluate Elisp code, so we switch to Elisp mode in the scratch buffer
-   ;; when Emacs is idle for 10 seconds.
-   (+eval-when-idle-for! 10.0
-     (setq initial-major-mode 'emacs-lisp-mode)
+     (+log! "Setting scratch buffer content.")
+     ;; Print load time, and a quote to *scratch*
      (with-current-buffer (get-scratch-buffer-create)
-       (emacs-lisp-mode)))
+       (erase-buffer)
+       (insert (format
+                ";; MinEmacs loaded in %.2fs with %d garbage collection%s done!\n"
+                (string-to-number (car (string-split (emacs-init-time))))
+                gcs-done (if (> gcs-done 1) "s" "")))
+       (insert ";; ==============================\n")
+       ;; Insert some quote from fortune
+       (when (executable-find "fortune")
+         (insert (string-join
+                  (mapcar (lambda (l) (concat ";; " l))
+                          (string-lines (shell-command-to-string "fortune")))
+                  "\n"))
+         (insert "\n;; ==============================\n"))
+       ;; Set initial scratch message.
+       (setq initial-scratch-message (buffer-string)))
 
-   ;; Require the virtual package to triggre loading packages depending on it
-   (require 'minemacs-loaded)))
+     ;; In `me-defaults', the `initial-major-mode' is set to `fundamental-mode'
+     ;; to enhance startup time. However, I like to use the scratch buffer to
+     ;; evaluate Elisp code, so we switch to Elisp mode in the scratch buffer
+     ;; when Emacs is idle for 10 seconds.
+     (+eval-when-idle-for! 10.0
+       (setq initial-major-mode 'emacs-lisp-mode)
+       (with-current-buffer (get-scratch-buffer-create)
+         (emacs-lisp-mode)))
 
-;;; Write user custom variables to separate file instead of init.el
-(setq custom-file (concat minemacs-config-dir "custom-vars.el"))
+     ;; Require the virtual package to triggre loading packages depending on it
+     (require 'minemacs-loaded)))
 
-;; When running in an async Org export context, the used modules are set in
-;; modules/extras/me-org-export-async-init.el
-(if (featurep 'me-org-export-async-init)
-    (progn (message "Loading \"init.el\" in an org-export-async context.")
-           (require 'minemacs-loaded)
-           (setq minemacs-not-lazy t)
-           (require 'minemacs-lazy))
-  ;; Load the default list of enabled modules (`minemacs-modules' and `minemacs-core-modules')
-  (load (concat minemacs-core-dir "me-modules.el") nil (not minemacs-verbose))
+  ;; ========= Load MinEmacs packages and user customization =========
+  ;; When running in an async Org export context, the used modules are set in
+  ;; modules/extras/me-org-export-async-init.el, so we must not overrite them with
+  ;; the user's enabled modules.
+  (if (featurep 'me-org-export-async-init)
+      (progn (message "Loading \"init.el\" in an org-export-async context.")
+             (setq minemacs-not-lazy t)
+             (require 'minemacs-loaded))
+    ;; Load the default list of enabled modules (`minemacs-modules' and `minemacs-core-modules')
+    (load (concat minemacs-core-dir "me-modules.el") nil (not minemacs-verbose))
 
-  ;; The modules.el file can override minemacs-modules and minemacs-core-modules
-  (let ((user-conf-modules (concat minemacs-config-dir "modules.el")))
-    (when (file-exists-p user-conf-modules)
-      (+log! "Loading modules file from \"%s\"" user-conf-modules)
-      (load user-conf-modules nil (not minemacs-verbose)))))
-
-(defun minemacs-load ()
-  "Reload all configuration, including user's config.el."
+    ;; The modules.el file can override minemacs-modules and minemacs-core-modules
+    (let ((user-conf-modules (concat minemacs-config-dir "modules.el")))
+      (when (file-exists-p user-conf-modules)
+        (+log! "Loading modules file from \"%s\"" user-conf-modules)
+        (load user-conf-modules nil (not minemacs-verbose)))))
 
   ;; Load fonts early (they are read from the default `minemacs-default-fonts').
   (+set-fonts)
@@ -164,6 +162,9 @@
   ;; Run hooks before loading user config
   (require 'minemacs-before-user-config)
 
+  ;; Write user custom variables to separate file instead of init.el
+  (setq custom-file (concat minemacs-config-dir "custom-vars.el"))
+
   (when (and custom-file (file-exists-p custom-file))
     (+log! "Loafing user custom file from \"%s\"" custom-file)
     (load custom-file nil (not minemacs-verbose)))
@@ -179,10 +180,6 @@
     (when (featurep 'native-compile)
       (+eval-when-idle!
         (+info! "Trying to clean outdated native compile cache")
-        (+shutup! (native-compile-prune-cache))))))
+        (+shutup! (native-compile-prune-cache)))))
 
-
-;; Load for the first time
-(minemacs-load)
-
-(+log! "Loaded init.el")
+  (+log! "Loaded init.el"))

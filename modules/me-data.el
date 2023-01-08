@@ -18,11 +18,10 @@
     "k" #'csv-kill-fields
     "t" #'csv-transpose)
 
-  ;; TODO: Need to fix the case of two commas, example "a,b,,c,d"
+  ;; Adapted from: https://reddit.com/r/emacs/comments/26c71k/comment/chq2r8m
   (defun +csv-rainbow (&optional separator)
     "Colorize CSV columns."
     (interactive (list (when current-prefix-arg (read-char "Separator: "))))
-    (require 'cl-lib)
     (require 'color)
     (font-lock-mode 1)
     (let* ((separator (or separator ?\,))
@@ -30,14 +29,13 @@
            (colors (cl-loop for i from 0 to 1.0 by (/ 2.0 n)
                             collect (apply #'color-rgb-to-hex
                                            (color-hsl-to-rgb i 0.3 0.5)))))
-      (cl-loop for i from 2 to n by 2
+      (cl-loop for i from 2 to (1+ n) by 2
                for c in colors
-               for r = (format "^\\([^%c\n]+%c\\)\\{%d\\}" separator separator i)
+               for r = (format "^\\([^%c\n]*[%c\n]\\)\\{%d\\}" separator separator i)
                do (font-lock-add-keywords nil `((,r (1 '(face (:foreground ,c))))))))))
 
-(use-package yaml-ts-mode
-  :straight (:type built-in)
-  :when (>= emacs-major-version 29)
+(use-package yaml-mode
+  :straight t
   :mode "Procfile\\'")
 
 (use-package yaml-pro
@@ -64,9 +62,15 @@
 
 (use-package graphviz-dot-mode
   :straight (graphviz-dot-mode :files ("graphviz-dot-mode.el" "texinfo"))
-  :defer t
+  :general
+  (+map-local :keymaps 'graphviz-dot-mode-map
+    "p" #'graphviz-dot-preview
+    "P" #'graphviz-dot-view
+    "l" #'graphviz-turn-on-live-preview
+    "L" #'graphviz-turn-off-live-preview)
   :custom
   (graphviz-dot-view-command "xdot %s")
+  (graphviz-dot-preview-extension "svg")
   :config
   (+eglot-register 'graphviz-dot-mode '("dot-language-server" "--stdio")))
 

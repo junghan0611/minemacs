@@ -10,7 +10,7 @@
   :when (+emacs-features-p 'modules)
   :custom
   (parinfer-rust-library-directory (concat minemacs-local-dir "parinfer-rust/"))
-  (parinfer-rust-auto-download t)
+  (parinfer-rust-auto-download (eq sys/arch 'x86_64))
   :hook ((emacs-lisp-mode
           clojure-mode
           scheme-mode
@@ -21,8 +21,21 @@
 (use-package slime
   :straight t
   :defer t
-  :init
-  (setq inferior-lisp-program "sbcl"))
+  :config
+  (dolist (impl '("lisp"   ; Default Lisp implementation on the system
+                  "clisp"  ; GNU CLISP
+                  "abcl"   ; Armed Bear Common Lisp
+                  "ecl"    ; Embeddable Common-Lisp
+                  "ccl"    ; Clozure Common Lisp
+                  "cmucl"  ; CMU Common Lisp
+                  "clasp"  ; Common Lisp on LLVM
+                  "sbcl")) ; Steel Bank Common Lisp
+    (when (executable-find impl)
+      (add-to-list
+       'slime-lisp-implementations
+       `(,(intern impl) (,impl) :coding-system utf-8-unix))))
+  (setq inferior-lisp-program (caar (cdar slime-lisp-implementations))
+        slime-default-lisp (caar slime-lisp-implementations)))
 
 (use-package macrostep
   :straight t
@@ -71,7 +84,7 @@
   :straight (:type built-in)
   :hook (emacs-lisp-mode . (lambda () (setq-local tab-width 8))) ;; to view built-in packages correctly
   :after minemacs-loaded ;; prevent elisp-mode from being loaded too early
-  :config
+  :general
   (+map-local :keymaps '(emacs-lisp-mode-map lisp-interaction-mode-map)
     "d"   '(nil :wk "edebug")
     "df"  'edebug-defun
@@ -102,7 +115,6 @@
     "cf"  #'elisp-byte-compile-file
     "cn"  #'emacs-lisp-native-compile-and-load
     "cb"  #'emacs-lisp-byte-compile-and-load)
-
   (+map-local :keymaps '(edebug-mode-map)
     "e"   '(nil :wk "eval")
     "ee"  'edebug-eval-last-sexp

@@ -35,7 +35,6 @@
 
 (use-package ein
   :straight t
-  :defer t
   :mode ("\\.ipynb\\'" . ein:ipynb-mode)
   :general
   (+map
@@ -45,12 +44,15 @@
     "jl" #'ein:login
     "jf" #'ein:file-open
     "jn" #'ein:notebook-open)
-  :config
   (+map-local :keymaps 'ein:ipynb-mode-map
     "o" #'ein:process-find-file-callback
     "O" #'ein:process-open-notebook
     "r" #'ein:gat-run-remote
     "l" #'ein:gat-run-local))
+
+(use-package julia-mode
+  :straight t
+  :defer t)
 
 (use-package ess
   :straight t

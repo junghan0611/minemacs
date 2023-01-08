@@ -8,11 +8,28 @@
   :straight (:host github :repo "kiennq/treesit-langs" :files (:defaults "queries"))
   :when (+emacs-features-p 'tree-sitter)
   :hook (prog-mode . +treesit-hl-enable-maybe)
+  :defines +treesit-hl-enable-maybe
   :preface
   (+fn-inhibit-messages! treesit-langs-install-grammars)
   :init
   (defun +treesit-hl-enable-maybe ()
-    (ignore-errors (treesit-hl-enable))))
+    (unless (cl-some
+             #'derived-mode-p
+             '(emacs-lisp-mode
+               org-mode))
+      (ignore-errors (treesit-hl-enable))))
+  :config
+  ;; Add missing languages to the list
+  (add-to-list 'treesit-major-mode-language-alist '(graphviz-dot-mode . dot))
+  (advice-add
+   'treesit-langs--hl-query-path :around
+   (defun +treesit-langs--fallback-to-repos-a (old-fn lang-symbol &optional mode)
+     (let ((path (apply old-fn (list lang-symbol mode))))
+       (if (not (file-exists-p path))
+           (concat (treesit-langs--repos-dir)
+                   (format "%s/queries/" lang-symbol)
+                   (file-name-nondirectory path))
+         path)))))
 
 (unless (+emacs-features-p 'tree-sitter)
   (load (concat minemacs-modules-dir "obsolete/me-tree-sitter.el")
@@ -26,26 +43,28 @@
 
 (use-package hideif
   :straight (:type built-in)
-  :hook ((c-mode c-ts-mode c++-mode c++-ts-mode cuda-mode) . hide-ifdef-mode)
+  :init
+  ;; If me-lsp is used, lsp-semantic-tokens should do a better job
+  (unless (memq 'me-lsp minemacs-modules)
+    (dolist (h '(c++-mode-hook c++-ts-mode-hook c-mode-hook c-ts-mode-hook cuda-mode-hook))
+      (add-hook h #'hide-ifdef-mode)))
+  :defer t
   :custom
   (hide-ifdef-shadow t)
   (hide-ifdef-initially t))
 
-;;; Eglot + LSP
 (use-package eglot
   :straight `(:type ,(if (< emacs-major-version 29) 'git 'built-in))
-  :hook ((c++-mode
-          c++-ts-mode
-          c-mode c-ts-mode
-          python-mode python-ts-mode
-          rust-mode
-          cmake-mode) . eglot-ensure)
-  :commands eglot eglot-ensure
+  :init
+  (unless (memq 'me-lsp minemacs-modules) ;; If me-lsp is used, prefer it!
+    (dolist (h '(c++-mode-hook c++-ts-mode-hook c-mode-hook c-ts-mode-hook python-mode-hook
+                 python-ts-mode-hook rust-mode-hook cmake-mode-hook))
+      (add-hook h #'eglot-ensure)))
   :general
   (+map
     :infix "c"
-    "S"  '(nil :wk "eglot session")
-    "Ss" '(eglot :wk "Start"))
+    "e"  '(nil :wk "eglot session")
+    "ee" #'eglot)
   :custom
   (eglot-autoshutdown t) ;; shutdown after closing the last managed buffer
   (eglot-sync-connect 0) ;; async, do not block
@@ -65,9 +84,9 @@
     "ri" '(eglot-code-action-inline :wk "Inline")
     "re" '(eglot-code-action-extract :wk "Extract")
     "ro" '(eglot-code-action-organize-imports :wk "Organize imports")
-    "Sq" '(eglot-shutdown :wk "Shutdown")
-    "Sr" '(eglot-reconnect :wk "Reconnect")
-    "SQ" '(eglot-shutdown-all :wk "Shutdown all")
+    "eq" '(eglot-shutdown :wk "Shutdown")
+    "er" '(eglot-reconnect :wk "Reconnect")
+    "eQ" '(eglot-shutdown-all :wk "Shutdown all")
     "w"  '(eglot-show-workspace-configuration :wk "Eglot workspace config"))
 
   (+eglot-register
@@ -124,11 +143,35 @@ the children of class at point."
 
   ;; Provide `consult-lsp' functionality from `consult-eglot', useful
   ;; for packages which relay on `consult-lsp' (like `dirvish-subtree').
-  (defalias 'consult-lsp-file-symbols #'consult-eglot-symbols))
+  (unless (memq 'me-lsp minemacs-modules)
+    (defalias 'consult-lsp-file-symbols #'consult-eglot-symbols)))
+
+(use-package eldoc
+  :straight (:type built-in)
+  :defer t
+  :custom
+  (eldoc-documentation-strategy #'eldoc-documentation-compose))
 
 (use-package eldoc-box
   :straight t
-  :hook (prog-mode . eldoc-box-hover-at-point-mode))
+  :hook (prog-mode . eldoc-box-hover-at-point-mode)
+  :hook (eglot-managed-mode . eldoc-box-hover-at-point-mode))
+
+(use-package cov
+  :straight (:type git :host github :repo "abougouffa/cov" :branch "feat/gcov-cmake")
+  :defer t
+  :custom
+  (cov-highlight-lines t)
+  :config
+  (defun +cov-coverage-mode ()
+    (interactive)
+    (if cov-coverage-mode
+        (progn
+          (setq cov-coverage-mode nil)
+          (message "Disabled coverage mode, showing how often lines are executed."))
+      (setq cov-coverage-mode t)
+      (message "Enabled coverage mode."))
+    (cov-update)))
 
 ;;; Formatting
 (use-package apheleia
@@ -136,6 +179,9 @@ the children of class at point."
   :general
   (+map "cff" #'apheleia-format-buffer)
   :config
+  (add-to-list 'apheleia-formatters '(cmake-format . ("cmake-format")))
+  (add-to-list 'apheleia-mode-alist '(cmake-mode . cmake-format))
+  (add-to-list 'apheleia-mode-alist '(cmake-ts-mode . cmake-format))
   (dolist (mode '(emacs-lisp-mode lisp-data-mode scheme-mode))
     (push (cons mode 'lisp-indent) apheleia-mode-alist)))
 
@@ -153,22 +199,6 @@ the children of class at point."
   (+map :keymaps '(c-mode-map c++-mode-map cuda-mode-map scad-mode-map)
     "cfc" #'clang-format-buffer))
 
-(use-package flymake
-  :straight (:type built-in)
-  :general
-  (+map
-    "tf"  #'flymake-mode)
-  :config
-  (+map-local :keymaps 'flymake-mode-map
-    "f"  '(nil :wk "flymake")
-    "fn" #'flymake-goto-next-error
-    "fN" #'flymake-goto-prev-error
-    "fs" #'flymake-start))
-
-(use-package flymake-easy
-  :straight t
-  :defer t)
-
 ;;; Modes
 (use-package vimrc-mode
   :straight t
@@ -182,10 +212,6 @@ the children of class at point."
 (use-package cmake-font-lock
   :straight (:host github :repo "Lindydancer/cmake-font-lock" :files (:defaults "*"))
   :hook (cmake-mode . cmake-font-lock-activate))
-
-(use-package eldoc-cmake
-  :straight t
-  :after cmake-mode)
 
 (use-package plantuml-mode
   :straight t
@@ -247,6 +273,10 @@ the children of class at point."
     "f" #'rust-format-buffer
     "F" #'rust-goto-format-problem
     "S" #'rust-enable-format-on-save))
+
+(use-package cuda-mode
+  :straight t
+  :defer t)
 
 (use-package dumb-jump
   :straight t
