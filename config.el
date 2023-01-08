@@ -37,9 +37,14 @@
 
 ;; (setq minemacs-theme 'doom-homage-white)
 
+;;  *한영 자간 확인*
+;;  +------------+------------+
+;;  | 일이삼사오 | 일이삼사오 |
+;;  | abcdefghij | abcdefghij |
+;;  +------------+------------+)
+
 (defun my/korean-set-font-face()
   (interactive)
-  ;; (set-frame-font "Sarasa Mono K Nerd Font" nil t)
   (set-face-font 'fixed-pitch "Sarasa Mono K Nerd Font")
   (set-face-font 'fixed-pitch-serif "KoPubWorldBatang")
   (set-face-font 'variable-pitch "Source Han Sans K VF")
@@ -48,7 +53,7 @@
 
 (add-hook 'minemacs-after-startup-hook 'my/korean-set-font-face)
 (add-hook 'after-init-hook 'my/korean-set-font-face)
-(add-hook 'enable-theme-functions 'my/korean-set-font-face)
+;; (add-hook 'enable-theme-functions 'my/korean-set-font-face)
 
 ;; If you installed Emacs from source, you can add the source code
 ;; directory to enable jumping to symbols defined in Emacs' C code.
@@ -116,7 +121,7 @@
   ;; Set Org-mode directory
   (setq org-directory "~/sync/org/") ; let's put files here
   (setq org-workflow-directory "~/sync/org/workflow/") ; let's put files here
-  (setq org-default-notes-file (concat org-workflow-directory "refile.org")
+  (setq org-default-notes-file (concat org-workflow-directory "refile.org"))
   ;; Customize Org stuff
   ;; (setq org-todo-keywords
   ;;       '((sequence "IDEA(i)" "TODO(t)" "NEXT(n)" "PROJ(p)" "STRT(s)" "WAIT(w)" "HOLD(h)" "|" "DONE(d)" "KILL(k)")
@@ -127,7 +132,7 @@
 
   ;; Your Org files to include in the agenda
   (setq org-agenda-files
-        (mapcar 
+        (mapcar
           (lambda (f) (concat org-workflow-directory f))
           '("refile.org"
             "diary.org"
