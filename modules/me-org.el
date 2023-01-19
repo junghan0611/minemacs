@@ -10,26 +10,12 @@
   :defer (not (daemonp))
   :preface
   ;; Set to nil so we can detect user changes (in config.el)
-  (defvar org-directory nil)
-  :general
-  (+map-local :keymaps 'org-mode-map
-    "l"  '(nil :wk "link")
-    "ll" #'org-insert-link
-    "e"  #'org-export-dispatch
-    "s"  #'org-edit-src-code)
-  (+map-local :keymaps 'org-src-mode-map
-    "s" #'org-edit-src-save
-    "q" #'org-edit-src-abort
-    "e" #'org-edit-src-exit)
-  (+map-key
-    :keymaps 'org-mode-map
-    :states 'normal
-    "RET" #'org-open-at-point)
+  (setq org-directory nil)
   :custom
   (org-tags-column 0)
-  (org-startup-indented t)
-  (org-cycle-hide-block-startup t)
   (org-auto-align-tags nil)
+  (org-startup-indented nil)
+  (org-cycle-hide-block-startup t)
   (org-return-follows-link t) ; RET follows link (a key bind has to be defined for Evil, see below)
   (org-fold-catch-invisible-edits 'smart) ; try not to accidently do weird stuff in invisible regions
   (org-fontify-quote-and-verse-blocks t)
@@ -52,6 +38,20 @@
   (org-edit-src-turn-on-auto-save t) ; auto-save org-edit-src
   (org-edit-src-auto-save-idle-delay auto-save-timeout) ; use the defaults
   :config
+  (+map-local :keymaps 'org-mode-map
+    "l"  '(nil :wk "link")
+    "ll" #'org-insert-link
+    "e"  #'org-export-dispatch
+    "s"  #'org-edit-src-code)
+  (+map-local :keymaps 'org-src-mode-map
+    "s" #'org-edit-src-save
+    "q" #'org-edit-src-abort
+    "e" #'org-edit-src-exit)
+  (+map-key
+    :keymaps 'org-mode-map
+    :states 'normal
+    "RET" #'org-open-at-point)
+
   ;; Tectonic can be interesting, however, it don't work right now
   ;; with some of my documents (natbib + sagej...)
   (when (and (executable-find "tectonic") nil)
@@ -62,17 +62,16 @@
 
   ;; Dynamically change font size for Org heading levels, starting from
   ;; `+org-level-base-size', and shrinking by a factor of 0.9 at each level.
-  (defvar +org-level-base-size 1.5)
+  (defvar +org-level-base-size 1.3)
 
   (dotimes (level 8)
-    (let ((size (* +org-level-base-size (expt 0.9 level))))
+    (let ((size (max 1.0 (* +org-level-base-size (expt 0.9 level)))))
       (set-face-attribute
        (intern (format "org-level-%d" (1+ level))) nil
-       :weight (cond
-                ((< level 3) 'light)
-                ((< level 6) 'semi-bold)
-                (t 'ultra-bold))
-       :height (max 1.0 size))))
+       :weight (cond ((< level 3) 'semi-bold)
+                     ((< level 5) 'bold)
+                     (t 'heavy))
+       :height size)))
 
   (org-babel-do-load-languages
    'org-babel-load-languages
@@ -99,23 +98,11 @@
      (plantuml . t)
      (makefile . t)))
 
-  (setq org-src-lang-modes
-        '(("C" . c)
-          ("C++" . c++)
-          ("asymptote" . asy)
-          ("bash" . sh)
-          ("beamer" . latex)
-          ("calc" . fundamental)
-          ("cpp" . c++)
-          ("ditaa" . artist)
-          ("desktop" . conf-desktop)
-          ("dot" . graphviz-dot) ; changed
-          ("elisp" . emacs-lisp)
-          ("ocaml" . tuareg)
-          ("screen" . shell-script)
-          ("shell" . sh)
-          ("sqlite" . sql)
-          ("toml" . conf-toml)))
+  (with-eval-after-load 'org-src
+    (setq org-src-lang-modes
+          (append
+           '(("dot" . graphviz-dot))
+           (delete (assoc "dot" org-src-lang-modes #'equal) org-src-lang-modes))))
 
   (with-eval-after-load 'plantuml-mode
     (setq org-plantuml-jar-path plantuml-jar-path
@@ -134,7 +121,7 @@
   (+org-extras-lower-case-keywords-and-properties-setup))
 
 (use-package org-contrib
-  :straight (:host sourcehut :repo "bzg/org-contrib")
+  :straight t
   :after org)
 
 (use-package engrave-faces
@@ -209,6 +196,10 @@
 (use-package org-modern
   :straight t
   :hook (org-mode . org-modern-mode)
+  :hook (org-agenda-finalize . org-modern-agenda)
+  :custom-face
+  ;; Force monospaced font for tags
+  (org-modern-tag ((t (:inherit org-verbatim :weight regular :foreground "black" :background "LightGray" :box "black"))))
   :custom
   (org-modern-star '("◉" "○" "◈" "◇" "✳" "◆" "✸" "▶"))
   (org-modern-table-vertical 5)
@@ -234,6 +225,19 @@
                 :foreground "white" :background "orange"))
      ("DONE" . (:inherit org-verbatim :weight semi-bold
                 :foreground "black" :background "LightGray")))))
+
+(use-package org-agenda
+  :straight (:type built-in)
+  :defer t
+  :custom
+  (org-agenda-tags-column 0)
+  (org-agenda-block-separator ?─)
+  (org-agenda-time-grid
+   '((daily today require-timed)
+     (800 1000 1200 1400 1600 1800 2000)
+     " ┄┄┄┄┄ " "┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄"))
+  (org-agenda-current-time-string
+   "⭠ now ─────────────────────────────────────────────────"))
 
 ;; For latex fragments
 (use-package org-fragtog

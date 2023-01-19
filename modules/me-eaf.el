@@ -18,8 +18,9 @@
   :commands eaf-file-sender-qrcode-in-dired +eaf-open-mail-as-html +browse-url-eaf
   :custom
   ;; Generic
-  (eaf-apps-to-install '(browser mindmap jupyter org-previewer pdf-viewer
-                         markdown-previewer file-sender video-player))
+  (eaf-apps-to-install
+   '(browser mindmap jupyter org-previewer pdf-viewer system-monitor
+     markdown-previewer file-sender video-player))
   (eaf-start-python-process-when-require t)
   (eaf-kill-process-after-last-buffer-closed t)
   (eaf-fullscreen-p nil)
@@ -66,8 +67,15 @@
   ;; PDF viewer
   (eaf-pdf-outline-buffer-indent 2)
   :config
-  (dolist (app eaf-apps-to-install)
-    (require (intern (format "eaf-%s" app))))
+  ;; Try to load enabled apps, and install them if they aren't installed
+  (let (not-installed-apps)
+    (dolist (app eaf-apps-to-install)
+      (unless (require (intern (format "eaf-%s" app)) nil t)
+        (push app not-installed-apps)))
+    (when not-installed-apps
+      (apply #'eaf-install-and-update not-installed-apps)
+      (dolist (app not-installed-apps)
+        (require (intern (format "eaf-%s" app))))))
 
   (defun +browse-url-eaf (url &rest args)
     "Open URL in EAF Browser."
