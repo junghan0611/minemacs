@@ -206,95 +206,95 @@
   ;; needs to be run after other hooks have acted.
   (run-at-time nil nil #'org-appear--set-elements))
 
-(use-package org-modern
-  :straight t
-  :hook (org-mode . org-modern-mode)
-  :custom
-  (org-modern-star '("◉" "○" "◈" "◇" "✳" "◆" "✸" "▶"))
-  (org-modern-table-vertical 5)
-  (org-modern-table-horizontal 2)
-  (org-modern-list '((?+ . "➤") (?- . "–") (?* . "•")))
-  (org-modern-block-fringe nil)
-  (org-modern-todo-faces
-   ;; Tweak colors, and force it to be monospaced, useful when using
-   ;; mixed-pitch-mode.
-   '(("IDEA" . (:inherit org-verbatim :weight semi-bold
-                :foreground "white" :background "goldenrod"))
-     ("NEXT" . (:inherit org-verbatim :weight semi-bold
-                :foreground "white" :background "IndianRed1"))
-     ("STRT" . (:inherit org-verbatim :weight semi-bold
-                :foreground "white" :background "OrangeRed"))
-     ("WAIT" . (:inherit org-verbatim :weight semi-bold
-                :foreground "white" :background "coral"))
-     ("KILL" . (:inherit org-verbatim :weight semi-bold
-                :foreground "white" :background "DarkGreen"))
-     ("PROJ" . (:inherit org-verbatim :weight semi-bold
-                :foreground "white" :background "LimeGreen"))
-     ("HOLD" . (:inherit org-verbatim :weight semi-bold
-                :foreground "white" :background "orange"))
-     ("DONE" . (:inherit org-verbatim :weight semi-bold
-                :foreground "black" :background "LightGray")))))
+;; (use-package org-modern
+;;   :straight t
+;;   :hook (org-mode . org-modern-mode)
+;;   :custom
+;;   (org-modern-star '("◉" "○" "◈" "◇" "✳" "◆" "✸" "▶"))
+;;   (org-modern-table-vertical 5)
+;;   (org-modern-table-horizontal 2)
+;;   (org-modern-list '((?+ . "➤") (?- . "–") (?* . "•")))
+;;   (org-modern-block-fringe nil)
+;;   (org-modern-todo-faces
+;;    ;; Tweak colors, and force it to be monospaced, useful when using
+;;    ;; mixed-pitch-mode.
+;;    '(("IDEA" . (:inherit org-verbatim :weight semi-bold
+;;                 :foreground "white" :background "goldenrod"))
+;;      ("NEXT" . (:inherit org-verbatim :weight semi-bold
+;;                 :foreground "white" :background "IndianRed1"))
+;;      ("STRT" . (:inherit org-verbatim :weight semi-bold
+;;                 :foreground "white" :background "OrangeRed"))
+;;      ("WAIT" . (:inherit org-verbatim :weight semi-bold
+;;                 :foreground "white" :background "coral"))
+;;      ("KILL" . (:inherit org-verbatim :weight semi-bold
+;;                 :foreground "white" :background "DarkGreen"))
+;;      ("PROJ" . (:inherit org-verbatim :weight semi-bold
+;;                 :foreground "white" :background "LimeGreen"))
+;;      ("HOLD" . (:inherit org-verbatim :weight semi-bold
+;;                 :foreground "white" :background "orange"))
+;;      ("DONE" . (:inherit org-verbatim :weight semi-bold
+;;                 :foreground "black" :background "LightGray")))))
 
 ;; For latex fragments
-(use-package org-fragtog
-  :straight t
-  :hook (org-mode . org-fragtog-mode)
-  :custom
-  (org-fragtog-preview-delay 0.2))
+;; (use-package org-fragtog
+;;   :straight t
+;;   :hook (org-mode . org-fragtog-mode)
+;;   :custom
+;;   (org-fragtog-preview-delay 0.2))
 
-(use-package org-present
-  :straight t
-  :general
-  (+map "oP" :keymaps 'org-mode-map #'org-present)
-  :config
-  (setq org-present-text-scale 2.5)
+;; (use-package org-present
+;;   :straight t
+;;   :general
+;;   (+map "oP" :keymaps 'org-mode-map #'org-present)
+;;   :config
+;;   (setq org-present-text-scale 2.5)
 
-  (defvar-local +org-present--vcm-params
-      '(:enabled nil
-        :width nil
-        :center-text nil)
-    "Variable to hold `visual-fill-column-mode' parameters")
+;;   (defvar-local +org-present--vcm-params
+;;       '(:enabled nil
+;;         :width nil
+;;         :center-text nil)
+;;     "Variable to hold `visual-fill-column-mode' parameters")
 
-  (add-hook
-   'org-present-mode-hook
-   (defun +org-present--on-h ()
-     (setq-local
-      face-remapping-alist
-      '((default (:height 1.5) variable-pitch)
-        (header-line (:height 2.0) variable-pitch)
-        (org-document-title (:height 2.0) org-document-title)
-        (org-code (:height 1.55) org-code)
-        (org-verbatim (:height 1.55) org-verbatim)
-        (org-block (:height 1.25) org-block)
-        (org-block-begin-line (:height 0.7) org-block)))
-     ;; (org-present-big)
-     (org-display-inline-images)
-     (org-present-hide-cursor)
-     (org-present-read-only)
-     (when (bound-and-true-p visual-fill-column-mode)
-       (+plist-push! +org-present--vcm-params
-         :enabled visual-fill-column-mode
-         :width visual-fill-column-width
-         :center-text visual-fill-column-center-text))
-     (setq-local visual-fill-column-width 120
-                 visual-fill-column-center-text t)
-     (visual-fill-column-mode 1)))
+;;   (add-hook
+;;    'org-present-mode-hook
+;;    (defun +org-present--on-h ()
+;;      (setq-local
+;;       face-remapping-alist
+;;       '((default (:height 1.5) variable-pitch)
+;;         (header-line (:height 2.0) variable-pitch)
+;;         (org-document-title (:height 2.0) org-document-title)
+;;         (org-code (:height 1.55) org-code)
+;;         (org-verbatim (:height 1.55) org-verbatim)
+;;         (org-block (:height 1.25) org-block)
+;;         (org-block-begin-line (:height 0.7) org-block)))
+;;      ;; (org-present-big)
+;;      (org-display-inline-images)
+;;      (org-present-hide-cursor)
+;;      (org-present-read-only)
+;;      (when (bound-and-true-p visual-fill-column-mode)
+;;        (+plist-push! +org-present--vcm-params
+;;          :enabled visual-fill-column-mode
+;;          :width visual-fill-column-width
+;;          :center-text visual-fill-column-center-text))
+;;      (setq-local visual-fill-column-width 120
+;;                  visual-fill-column-center-text t)
+;;      (visual-fill-column-mode 1)))
 
-  (add-hook
-   'org-present-mode-quit-hook
-   (defun +org-present--off-h ()
-     (setq-local
-      face-remapping-alist
-      '((default default default)))
-     ;; (org-present-small)
-     (org-remove-inline-images)
-     (org-present-show-cursor)
-     (org-present-read-write)
-     (visual-fill-column-mode -1)
-     (unless (plist-get +org-present--vcm-params :enabled)
-       (setq-local visual-fill-column-width (plist-get +org-present--vcm-params :width)
-                   visual-fill-column-center-text (plist-get +org-present--vcm-params :center-text))
-       (visual-fill-column-mode 1)))))
+;;   (add-hook
+;;    'org-present-mode-quit-hook
+;;    (defun +org-present--off-h ()
+;;      (setq-local
+;;       face-remapping-alist
+;;       '((default default default)))
+;;      ;; (org-present-small)
+;;      (org-remove-inline-images)
+;;      (org-present-show-cursor)
+;;      (org-present-read-write)
+;;      (visual-fill-column-mode -1)
+;;      (unless (plist-get +org-present--vcm-params :enabled)
+;;        (setq-local visual-fill-column-width (plist-get +org-present--vcm-params :width)
+;;                    visual-fill-column-center-text (plist-get +org-present--vcm-params :center-text))
+;;        (visual-fill-column-mode 1)))))
 
 
 (provide 'me-org)

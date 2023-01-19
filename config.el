@@ -2,6 +2,8 @@
 
 ;; Copyright (C) 2022 Abdelhak Bougouffa
 
+(load-path "~/.spacemacs.d/lisp/")
+
 ;; Personal info
 (setq user-full-name "Junghan Kim"
       user-mail-address "junghanacs@gmail.com")
@@ -116,31 +118,29 @@
 ;;                                 "Lastname" ;; Last name
 ;;                                 "/R&D Engineer at Some company/")))))
 
+(message "MY-WORKFLOW-KR-LOADING... START")
+
 ;; Module: `me-org' -- Package: `org'
 (with-eval-after-load 'org
   ;; Set Org-mode directory
-  (setq org-directory "~/sync/org/") ; let's put files here
-  (setq org-workflow-directory "~/sync/org/workflow/") ; let's put files here
-  (setq org-default-notes-file (concat org-workflow-directory "refile.org"))
-  ;; Customize Org stuff
-  ;; (setq org-todo-keywords
-  ;;       '((sequence "IDEA(i)" "TODO(t)" "NEXT(n)" "PROJ(p)" "STRT(s)" "WAIT(w)" "HOLD(h)" "|" "DONE(d)" "KILL(k)")
-  ;;         (sequence "[ ](T)" "[-](S)" "|" "[X](D)")
-  ;;         (sequence "|" "OKAY(o)" "YES(y)" "NO(n)")))
+  (use-package 'org-journal
+    :straight t
+    )
+  (use-package 'bbdb
+    :straight t
+    )
+  (use-package 'org-pomodoro
+    :straight t
+    )
 
-  (setq org-export-headline-levels 5)
+  (require 'my-org-common)
+  (require 'org-workflow)
 
-  ;; Your Org files to include in the agenda
-  (setq org-agenda-files
-        (mapcar
-          (lambda (f) (concat org-workflow-directory f))
-          '("refile.org"
-            "diary.org"
-            "Emacs.org"
-            "Project.org"
-            "personal.org"
-            "Junghanacs.org"))))
-
+  ;; add-hook
+  (add-hook! 'markdown-mode-hook 'auto-fill-mode)
+  (add-hook! 'org-mode-hook 'auto-fill-mode)
+  )
+(message "MY-WORKFLOW-KR-LOADING... DONE")
 ;; Module: `me-notes' -- Package: `org-roam'
 (with-eval-after-load 'org-roam
   (setq org-roam-directory "~/sync/org/roam/"
