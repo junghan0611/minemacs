@@ -1,53 +1,24 @@
 ;; -*- lexical-binding: t; -*-
 
 
-(use-package rg
-  :straight t
-  :general
-  (+map :infix "s"
-    "R" '(rg :wk "ripgrep")
-    "r" #'rg-dwim))
-
-(use-package affe
-  :straight t
-  :after consult orderless
-  :demand t
-  :general
-  (+map
-    "sg" #'affe-grep
-    "sf" #'affe-find)
-  :config
-  ;; Use orderless to compile regexps
-  (defun +affe-orderless-regexp-compiler (input _type _ignorecase)
-    (setq input (orderless-pattern-compiler input))
-    (cons input (lambda (str) (orderless--highlight input str))))
-
-  (setq affe-regexp-compiler #'+affe-orderless-regexp-compiler)
-
-  ;; Manual preview keys
-  (consult-customize affe-grep :preview-key (kbd "M-p"))
-  (consult-customize affe-find :preview-key (kbd "M-p")))
-
 ;; Should be configured in per-project basis, good documentation at:
 ;; https://github.com/cjohansson/emacs-ssh-deploy#deployment-configuration-examples
 (use-package ssh-deploy
-  :straight t
-  :defer t)
+  :straight t)
 
 (use-package tldr
   :straight t
-  :general
+  :init
   (+map "ht" #'tldr)
   :custom
   (tldr-enabled-categories '("common" "linux" "osx")))
 
 (use-package vterm
   :straight t
-  :general
+  :init
   (+map
     "ot" '(nil :wk "vterm")
     "otT" #'vterm)
-  :init
   ;; Hide vterm install window
   (add-to-list
    'display-buffer-alist
@@ -62,14 +33,11 @@
 
 (use-package multi-vterm
   :straight t
-  :general
+  :init
   (+map
     "ott" #'multi-vterm
     "otd" #'multi-vterm-dedicated-toggle
     "otp" #'multi-vterm-project)
-  :custom
-  (multi-vterm-dedicated-window-height-percent 30)
-  :init
   ;; Show at buttom
   (add-to-list
    'display-buffer-alist
@@ -79,6 +47,8 @@
      (dedicated . t)
      (reusable-frames . visible)
      (window-height . 0.3)))
+  :custom
+  (multi-vterm-dedicated-window-height-percent 30)
   :config
   (+map-key
     :keymaps 'vterm-mode-map
@@ -89,27 +59,20 @@
 
 (use-package docker
   :straight t
-  :general
+  :init
   (+map "ok" #'docker))
 
 (unless (+emacs-features-p 'tree-sitter)
   ;; Emacs 29 comes with `dockerfile-ts-mode'
   (use-package dockerfile-mode
-    :straight t
-    :defer t))
-
-(use-package esup
-  :straight t
-  :commands esup)
+    :straight t))
 
 (use-package systemd
-  :straight t
-  :defer t)
+  :straight t)
 
 (use-package pkgbuild-mode
   :straight t
-  :defer t
-  :general
+  :config
   (+map-local :keymaps 'pkgbuild-mode-map
     "b" #'pkgbuild-makepkg
     "a" #'pkgbuild-tar
@@ -121,15 +84,13 @@
 
 (use-package journalctl-mode
   :straight t
-  :defer t
-  :general
+  :config
   (+map-local :keymaps 'journalctl-mode-map
     "J" #'journalctl-next-chunk
     "K" #'journalctl-previous-chunk))
 
 (use-package tramp
   :straight (:type built-in)
-  :defer t
   :init
   ;; This is faster than the default "scp"
   (unless os/win
@@ -137,10 +98,9 @@
 
 (use-package bitwarden
   :straight (:host github :repo "seanfarley/emacs-bitwarden")
-  :defer t
   :preface
-  (defconst BITWARDEN-P (executable-find "bw"))
-  :when BITWARDEN-P
+  (defconst +bitwarden-available-p (executable-find "bw"))
+  :when +bitwarden-available-p
   :custom
   (bitwarden-automatic-unlock
    (lambda ()

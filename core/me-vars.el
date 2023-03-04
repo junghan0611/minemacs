@@ -9,6 +9,7 @@
 (defconst minemacs-config-dir
   (file-name-as-directory
    (or (getenv "MINEMACS_DIR")
+       (getenv "MINEMACSDIR")
        "~/.minemacs.d/"))
   "MinEmacs user customization directory.")
 
@@ -33,26 +34,30 @@
 1 - `+error!'
 2 - `+info!'
 3 - `+log!'
-4 - `+debug!' (reserved)")
+4 - `+debug!' (reserved)"
+  :group 'minemacs
+  :type 'natnum)
 
 (defconst minemacs-splash-keep
   (not (null (getenv "MINEMACS_SPLASH_KEEP")))
   "MinEmacs is started in keep splash screen mode.")
 
-(defconst minemacs-root-dir (file-name-as-directory user-emacs-directory))
+;; Derive the root directory from this file path
+(defconst minemacs-root-dir
+  (abbreviate-file-name
+   (file-name-directory
+    (directory-file-name
+     (file-name-directory (file-truename load-file-name))))))
 (defconst minemacs-core-dir (concat minemacs-root-dir "core/"))
 (defconst minemacs-elisp-dir (concat minemacs-root-dir "elisp/"))
 (defconst minemacs-modules-dir (concat minemacs-root-dir "modules/"))
 (defconst minemacs-extras-dir (concat minemacs-modules-dir "extras/"))
 (defconst minemacs-local-dir (concat minemacs-root-dir "local/"))
 (defconst minemacs-cache-dir (concat minemacs-local-dir "cache/"))
-(defconst minemacs-autoloads-file (concat minemacs-core-dir "me-autoloads.el"))
-
-;; Replace the default Emacs directory with the "local" directory
-(setq user-emacs-directory minemacs-local-dir)
+(defconst minemacs-loaddefs-file (concat minemacs-core-dir "me-loaddefs.el"))
 
 (defconst os/linux (not (null (memq system-type '(gnu gnu/linux)))))
-(defconst os/bsd (not (null (memq system-type '(darwin berkeley-unix)))))
+(defconst os/bsd (not (null (memq system-type '(darwin berkeley-unix gnu/kfreebsd)))))
 (defconst os/win (not (null (memq system-type '(cygwin windows-nt ms-dos)))))
 (defconst os/mac (eq system-type 'darwin))
 
@@ -67,22 +72,43 @@
 Compiled from the `system-configuration-features'.")
 
 (defcustom minemacs-fonts nil
-  "Fonts to use within MinEmacs.")
+  "Fonts to use within MinEmacs."
+  :group 'minemacs)
 
 (defcustom minemacs-leader-key "SPC"
-  "MinEmacs leader key.")
+  "MinEmacs leader key."
+  :group 'minemacs
+  :type 'string)
 
 (defcustom minemacs-localleader-key "SPC m"
-  "MinEmacs local leader (a.k.a. mode specific) key sequence.")
+  "MinEmacs local leader (a.k.a. mode specific) key sequence."
+  :group 'minemacs
+  :type 'string)
 
 (defcustom minemacs-global-leader-prefix "C-SPC"
-  "MinEmacs general leader key.")
+  "MinEmacs general leader key."
+  :group 'minemacs
+  :type 'string)
 
 (defcustom minemacs-global-mode-prefix "C-SPC m"
-  "MinEmacs general local leader (a.k.a. mode specific) key sequence.")
+  "MinEmacs general local leader (a.k.a. mode specific) key sequence."
+  :group 'minemacs
+  :type 'string)
 
 (defcustom minemacs-theme 'doom-one-light
-  "The theme of MinEmacs")
+  "The theme of MinEmacs."
+  :group 'minemacs
+  :type 'symbol)
+
+(defcustom minemacs-after-set-fonts-hook nil
+  "Runs after setting MinEmacs fonts, runs at the end of `+set-fonts'."
+  :group 'minemacs
+  :type 'hook)
+
+(defcustom minemacs-after-load-theme-hook nil
+  "Runs after loading MinEmacs theme, runs at the end of `+load-theme'."
+  :group 'minemacs
+  :type 'hook)
 
 (defcustom minemacs-before-user-config-hook nil
   "This hook will be run after loading modules and before loading user config.
@@ -123,6 +149,7 @@ MinEmacs hooks will be run in this order:
   (defconst minemacs-default-fonts
     `(:font-family ,mono-font
       :font-size 14
+      :unicode-font-family nil
       :variable-pitch-font-family ,varp-font
       :variable-pitch-font-size 14)
     "Default fonts of MinEmacs."))
@@ -136,11 +163,13 @@ MinEmacs hooks will be run in this order:
     vscode-json-languageserver marksman digestif wkhtmltopdf txt2html)
   "A list of programs I use within Emacs.")
 
-(defvar +env-save-vars
+(defcustom +env-save-vars
   '("PATH" "MANPATH" "CMAKE_PREFIX_PATH" "PKG_CONFIG_PATH" "LSP_USE_PLISTS")
   "List of environment variables saved by `+env-save'.
 You need to run Emacs from terminal to get the environment variables.
-MinEmacs then save them to be used in GUI sessions as well.")
+MinEmacs then save them to be used in GUI sessions as well."
+  :group 'minemacs
+  :type '(repeat string))
 
 
 (provide 'me-vars)

@@ -4,6 +4,12 @@
 
 ;; Author: Abdelhak Bougouffa <abougouffa@fedoraproject.org>
 
+(use-package treesit
+  :straight (:type built-in)
+  :when (+emacs-features-p 'tree-sitter)
+  :config
+  (setq-default treesit-font-lock-level 4))
+
 (use-package treesit-langs
   :straight (:host github :repo "kiennq/treesit-langs" :files (:defaults "queries"))
   :when (+emacs-features-p 'tree-sitter)
@@ -11,16 +17,16 @@
   :defines +treesit-hl-enable-maybe
   :preface
   (+fn-inhibit-messages! treesit-langs-install-grammars)
+  (defcustom +treesit-langs-hl-exclude-modes
+    '(emacs-lisp-mode org-mode)
+    "Modes to exclude from enabling `treesit-hl'.")
   :init
   (defun +treesit-hl-enable-maybe ()
-    (unless (cl-some
-             #'derived-mode-p
-             '(emacs-lisp-mode
-               org-mode))
-      (ignore-errors (treesit-hl-enable))))
+    (unless (cl-some #'derived-mode-p +treesit-langs-hl-exclude-modes)
+      (ignore-errors (treesit-hl-toggle t))))
   :config
-  ;; Add missing languages to the list
-  (add-to-list 'treesit-major-mode-language-alist '(graphviz-dot-mode . dot))
+  ;; Fallback to the queries found in the original grammar repository if not
+  ;; available in "treesit-langs/queries"
   (advice-add
    'treesit-langs--hl-query-path :around
    (defun +treesit-langs--fallback-to-repos-a (old-fn lang-symbol &optional mode)
@@ -35,42 +41,51 @@
   (load (concat minemacs-modules-dir "obsolete/me-tree-sitter.el")
         nil (not minemacs-verbose)))
 
-(use-package treesit
-  :straight (:type built-in)
-  :when (+emacs-features-p 'tree-sitter)
-  :defer t
-  :config
-  (setq-default treesit-font-lock-level 4))
-
 (use-package hideif
   :straight (:type built-in)
   :init
-  ;; If me-lsp is used, lsp-semantic-tokens should do a better job
+  ;; If `me-lsp' is enabled, `lsp-semantic-tokens-mode' should do a better job,
+  ;; so we don't enable `hide-ifdef-mode'.
   (unless (memq 'me-lsp minemacs-modules)
     (dolist (h '(c++-mode-hook c++-ts-mode-hook c-mode-hook c-ts-mode-hook cuda-mode-hook))
       (add-hook h #'hide-ifdef-mode)))
-  :defer t
   :custom
   (hide-ifdef-shadow t)
   (hide-ifdef-initially t))
 
 (use-package eglot
   :straight `(:type ,(if (< emacs-major-version 29) 'git 'built-in))
-  :init
-  (unless (memq 'me-lsp minemacs-modules) ;; If me-lsp is used, prefer it!
-    (dolist (h '(c++-mode-hook c++-ts-mode-hook c-mode-hook c-ts-mode-hook python-mode-hook
-                 python-ts-mode-hook rust-mode-hook cmake-mode-hook))
-      (add-hook h #'eglot-ensure)))
-  :general
-  (+map
-    :infix "c"
-    "e"  '(nil :wk "eglot session")
-    "ee" #'eglot)
+  :commands +eglot-auto-enable
   :custom
   (eglot-autoshutdown t) ;; shutdown after closing the last managed buffer
   (eglot-sync-connect 0) ;; async, do not block
   (eglot-extend-to-xref t) ;; can be interesting!
+  :init
+  (+map :infix "c"
+    "e"  '(nil :wk "eglot session")
+    "ee" #'eglot
+    "eA" #'+eglot-auto-enable)
+  (defvar +eglot-auto-enable-modes
+    '(c++-mode c++-ts-mode c-mode c-ts-mode
+      python-mode python-ts-mode
+      rust-mode cmake-mode
+      js-mode js-ts-mode typescript-mode typescript-ts-mode
+      json-mode json-ts-mode js-json-mode))
   :config
+  (defun +eglot-auto-enable ()
+    (interactive)
+    (dolist (mode +eglot-auto-enable-modes)
+      (let ((hook (intern (format "%s-hook" mode))))
+        (add-hook hook #'eglot-ensure)
+        (remove-hook hook #'lsp-deferred))))
+
+  ;; NOTE: This is a new feature added late in Emacs 29+, we temporary check for
+  ;; it's presence, it can be enabled directly when the upstream Eglot is synced
+  ;; with Emacs' one, and when Emacs 29 is officially released.
+  ;; See: https://lists.gnu.org/archive/html/emacs-devel/2023-02/msg00841.html
+  (when (fboundp #'eglot-inlay-hints-mode)
+    (add-hook 'eglot-managed-mode-hook #'eglot-inlay-hints-mode))
+
   (+map :keymaps 'eglot-mode-map
     :infix "c"
     "fF" #'eglot-format-buffer
@@ -138,18 +153,18 @@ the children of class at point."
 (use-package consult-eglot
   :straight t
   :after consult eglot
+  :demand t
   :config
   (+map :keymaps 'eglot-mode-map
     "cs" '(consult-eglot-symbols :wk "Symbols"))
 
-  ;; Provide `consult-lsp' functionality from `consult-eglot', useful
-  ;; for packages which relay on `consult-lsp' (like `dirvish-subtree').
+  ;; Provide `consult-lsp' functionality from `consult-eglot', useful for
+  ;; packages that relays on `consult-lsp' (like `dirvish-subtree').
   (unless (memq 'me-lsp minemacs-modules)
     (defalias 'consult-lsp-file-symbols #'consult-eglot-symbols)))
 
 (use-package eldoc
   :straight (:type built-in)
-  :defer t
   :custom
   (eldoc-documentation-strategy #'eldoc-documentation-compose))
 
@@ -160,7 +175,6 @@ the children of class at point."
 
 (use-package cov
   :straight (:type git :host github :repo "abougouffa/cov" :branch "feat/gcov-cmake")
-  :defer t
   :custom
   (cov-highlight-lines t)
   :config
@@ -174,29 +188,31 @@ the children of class at point."
       (message "Enabled coverage mode."))
     (cov-update)))
 
-;;; Formatting
 (use-package apheleia
   :straight t
-  :general
+  :init
   (+map "cff" #'apheleia-format-buffer)
   :config
   (add-to-list 'apheleia-formatters '(cmake-format . ("cmake-format")))
-  (add-to-list 'apheleia-mode-alist '(cmake-mode . cmake-format))
-  (add-to-list 'apheleia-mode-alist '(cmake-ts-mode . cmake-format))
-  (dolist (mode '(emacs-lisp-mode lisp-data-mode scheme-mode))
-    (push (cons mode 'lisp-indent) apheleia-mode-alist)))
+  (dolist (alist '((cmake-mode . cmake-format)
+                   (cmake-ts-mode . cmake-format)
+                   (cuda-mode . clang-format)
+                   (common-lisp-mode . lisp-indent)
+                   (emacs-lisp-mode . lisp-indent)
+                   (lisp-data-mode . lisp-indent)))
+    (add-to-list 'apheleia-mode-alist alist)))
 
 (use-package editorconfig
   :straight t
-  :general
+  :hook (prog-mode . editorconfig-mode)
+  :init
   (+map
     "fc" '(editorconfig-find-current-editorconfig :wk "Find current EditorConfig")
-    "cfe" #'editorconfig-format-buffer)
-  :hook (prog-mode . editorconfig-mode))
+    "cfe" #'editorconfig-format-buffer))
 
 (use-package clang-format
   :straight t
-  :general
+  :init
   (+map :keymaps '(c-mode-map c++-mode-map cuda-mode-map scad-mode-map)
     "cfc" #'clang-format-buffer))
 
@@ -206,58 +222,13 @@ the children of class at point."
   :mode "\\.vim\\(rc\\)?\\'")
 
 (use-package cmake-mode
+  :straight (:host github :repo "emacsmirror/cmake-mode" :files (:defaults "*"))
   :mode "CMakeLists\\.txt\\'"
-  :mode "\\.cmake\\'"
-  :straight (:host github :repo "emacsmirror/cmake-mode" :files (:defaults "*")))
+  :mode "\\.cmake\\'")
 
 (use-package cmake-font-lock
   :straight (:host github :repo "Lindydancer/cmake-font-lock" :files (:defaults "*"))
   :hook (cmake-mode . cmake-font-lock-activate))
-
-(use-package plantuml-mode
-  :straight t
-  :mode "\\.plantuml\\'"
-  :hook (plantuml-mode . +plantuml-mode-setup)
-  :custom
-  (plantuml-jar-path (concat minemacs-local-dir "plantuml/plantuml.jar"))
-  (plantuml-indent-level 2)
-  :config
-  (setq
-   plantuml-default-exec-mode
-   ;; Prefer the system executable
-   (if (executable-find "plantuml")
-       'executable
-     ;; Then, if a JAR exists, use it
-     (or (and (file-exists-p plantuml-jar-path) 'jar)
-         ;; otherwise, try to download a JAR in interactive mode
-         (and (not noninteractive) (plantuml-download-jar) 'jar)
-         ;; Fall back to server
-         'server)))
-
-  ;; Add support fot capf, rather than the builtin `plantuml-complete-symbol'
-  (defun +plantuml-mode-setup ()
-    (add-to-list
-     'completion-at-point-functions
-     (defun +plantuml-complete-at-point ()
-       "Perform symbol-at-pt completion on word before cursor."
-       (let* ((end-pos (point))
-              (sym-at-pt (or (thing-at-point 'symbol) ""))
-              (max-match (try-completion sym-at-pt plantuml-kwdList)))
-         (unless (null max-match)
-           (list (- end-pos (length sym-at-pt))
-                 end-pos
-                 (if (eq max-match t)
-                     (list keyword)
-                   (all-completions sym-at-pt plantuml-kwdList))))))))
-
-  (+map-local :keymaps 'plantuml-mode-map
-    "p" #'plantuml-preview-buffer
-    "P" #'plantuml-preview
-    "d" `(,(+cmdfy!
-            (if plantuml-mode-debug-enabled
-                (plantuml-disable-debug)
-              (plantuml-enable-debug)))
-          :wk "Toggle debug")))
 
 (use-package rust-mode
   :straight t
@@ -277,7 +248,11 @@ the children of class at point."
 
 (use-package cuda-mode
   :straight t
-  :defer t)
+  :hook (cuda-mode . display-line-numbers-mode))
+
+(use-package opencl-mode
+  :straight t
+  :mode "\\.cl\\'")
 
 (use-package dumb-jump
   :straight t
@@ -286,12 +261,11 @@ the children of class at point."
   :custom
   (dumb-jump-selector 'completing-read)
   :init
+  (+map
+    "cj" '(+dumb-jump-hydra/body :wk "+dumb-jump-hydra"))
   ;; Use as xref backend
   (with-eval-after-load 'xref
     (add-hook 'xref-backend-functions #'dumb-jump-xref-activate))
-  :general
-  (+map
-    "cj" '(+dumb-jump-hydra/body :wk "+dumb-jump-hydra"))
   :config
   ;; Define Hydra keybinding (from the repo's examples)
   (defhydra +dumb-jump-hydra (:color blue :columns 3)
@@ -308,37 +282,34 @@ the children of class at point."
   :straight (:host github :repo "tarsius/hl-todo")
   :hook (prog-mode . hl-todo-mode)
   :config
-  (setq
-   hl-todo-keyword-faces
-   (append
-    hl-todo-keyword-faces
-    '(("BUG" . "#ee5555")
-      ("PROJ" . "#447f44")
-      ("IDEA" . "#0fa050")))))
+  (setq hl-todo-keyword-faces
+        (append
+         hl-todo-keyword-faces
+         '(("BUG" . "#ee5555")
+           ("PROJ" . "#447f44")
+           ("IDEA" . "#0fa050")
+           ("INFO" . "#0e9030")
+           ("PERF" . "#e09030")))))
 
 (use-package rainbow-mode
   :straight t
-  :general
+  :init
   (+map :keymaps '(prog-mode-map conf-mode-map text-mode-map)
     "tR" #'rainbow-mode))
 
 (use-package lua-mode
   :straight t
-  :defer t
   :custom
   (lua-indent-level 2))
 
 (use-package powershell
-  :straight t
-  :defer t)
+  :straight t)
 
 (use-package franca-idl
-  :straight (:host github :repo "zeph1e/franca-idl.el")
-  :defer t)
+  :straight (:host github :repo "zeph1e/franca-idl.el"))
 
 (use-package bnf-mode
-  :straight t
-  :defer t)
+  :straight t)
 
 (use-package ebnf-mode
   :straight (:host github :repo "jeramey/ebnf-mode")

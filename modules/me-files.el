@@ -16,13 +16,14 @@
   (dirvish-fd-default-dir "~/")
   (dirvish-use-header-line t) ; 'global make header line span all panes
   (dirvish-use-mode-line t)
-  :general
+  :init
   (+map
     ;; Open
     "o-" '(dirvish :wk "Dirvish")
     "oq" '(dirvish-quick-access :wk "Dirvish quick access")
     ;; Search
     "sd" '(dirvish-fd :wk "Dirvish fd"))
+  :config
   (+map-key :keymaps 'dirvish-mode-map
     "q" #'dirvish-quit
     "s" #'dirvish-subtree-toggle
@@ -30,11 +31,12 @@
 
 (use-package vlf-setup
   :straight vlf
-  :after minemacs-loaded)
+  :after minemacs-loaded
+  :demand t)
 
 (use-package treemacs
   :straight t
-  :general
+  :init
   (+map
     "op" '(treemacs :wk "Side panel"))
   :custom
@@ -45,6 +47,7 @@
 (use-package treemacs-all-the-icons
   :straight t
   :after treemacs all-the-icons
+  :demand t
   :config
   (treemacs-load-theme "all-the-icons"))
 

@@ -9,11 +9,6 @@
 (use-package auctex
   :straight t
   :hook ((tex-mode TeX-mode latex-mode LaTeX-mode) . TeX-source-correlate-mode)
-  :general
-  (+map-local :keymaps '(tex-mode-map TeX-mode-map latex-mode-map LaTeX-mode-map)
-    "c" #'TeX-command-run-all
-    "m" #'TeX-command-master
-    "v" #'TeX-view)
   :custom
   (TeX-parse-self t) ; parse on load
   (TeX-auto-save t)  ; parse on save
@@ -24,13 +19,18 @@
   (TeX-electric-sub-and-superscript t) ; automatically insert braces after sub/superscript in `LaTeX-math-mode'.
   (TeX-save-query nil) ; just save, don't ask before each compilation.
   :config
-  (with-eval-after-load 'pdf-tools
+  (+map-local :keymaps '(tex-mode-map TeX-mode-map latex-mode-map LaTeX-mode-map)
+    "c" #'TeX-command-run-all
+    "m" #'TeX-command-master
+    "v" #'TeX-view)
+  (when (functionp 'pdf-tools-install)
     (add-to-list 'TeX-view-program-selection '(output-pdf "PDF Tools"))))
 
 ;; Adapted from Doom Emacs
 (use-package auctex-latexmk
   :straight t
   :after latex
+  :demand t
   :hook (LaTeX-mode . +tex--set-latexmk-as-default-cmd-h)
   :defines +tex--set-latexmk-as-default-cmd-h
   :custom
@@ -48,7 +48,7 @@
   (bibtex-dialect 'biblatex)
   (bibtex-align-at-equal-sign t)
   (bibtex-text-indentation 20)
-  :general
+  :config
   (+map-local :keymaps 'bibtex-mode-map
     "l" #'bibtex-fill-entry
     "r" #'bibtex-reformat))
@@ -58,7 +58,7 @@
   :straight (:type built-in)
   :hook (LaTeX-mode . turn-on-reftex)
   :hook (reftex-toc-mode . reftex-toc-rescan)
-  :general
+  :config
   (+map-local :keymaps 'reftex-mode-map
     ";" 'reftex-toc)
   (+map-key :keymaps 'reflex-toc-mode-map
@@ -66,7 +66,6 @@
     "k"   #'previous-line
     "q"   #'kill-buffer-and-window
     "ESC" #'kill-buffer-and-window)
-  :config
   ;; Set up completion for citations and references.
   ;; (set-company-backend! 'reftex-mode 'company-reftex-labels 'company-reftex-citations)
   ;; Get RefTeX working with BibLaTeX, see

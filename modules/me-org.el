@@ -7,7 +7,7 @@
 
 (use-package org
   :straight (:type built-in)
-  :defer (not (daemonp))
+  :after minemacs-loaded
   :preface
   ;; Set to nil so we can detect user changes (in config.el)
   (setq org-directory nil)
@@ -18,6 +18,7 @@
   (org-cycle-hide-block-startup t)
   (org-return-follows-link t) ; RET follows link (a key bind has to be defined for Evil, see below)
   (org-fold-catch-invisible-edits 'smart) ; try not to accidently do weird stuff in invisible regions
+  (org-fold-core-style 'overlays) ; Fix `evil' search problem (to be used with `evil-search')
   (org-fontify-quote-and-verse-blocks t)
   (org-special-ctrl-a/e t)
   (org-insert-heading-respect-content t)
@@ -68,9 +69,7 @@
     (let ((size (max 1.0 (* +org-level-base-size (expt 0.9 level)))))
       (set-face-attribute
        (intern (format "org-level-%d" (1+ level))) nil
-       :weight (cond ((< level 3) 'semi-bold)
-                     ((< level 5) 'bold)
-                     (t 'heavy))
+       :weight 'bold
        :height size)))
 
   (org-babel-do-load-languages
@@ -111,6 +110,7 @@
 
 (use-package me-org-extras
   :after org
+  :demand t
   :config
   (+org-extras-outline-path-setup)
   (+org-extras-pretty-latex-fragments-setup)
@@ -122,11 +122,13 @@
 
 (use-package org-contrib
   :straight t
-  :after org)
+  :after org
+  :demand t)
 
 (use-package engrave-faces
   :straight t
   :after org
+  :demand t
   :custom
   (org-latex-src-block-backend 'engraved))
 
@@ -166,16 +168,14 @@
 
 (use-package ox-hugo
   :straight t
-  :after org)
+  :after org
+  :demand t)
 
 (use-package ox-extra
   :after org
+  :demand t
   :config
   (ox-extras-activate '(latex-header-blocks ignore-headlines)))
-
-;; Org babel
-(use-package ob-tangle
-  :after org)
 
 ;; Other Org features
 (use-package org-appear
@@ -228,7 +228,6 @@
 
 (use-package org-agenda
   :straight (:type built-in)
-  :defer t
   :custom
   (org-agenda-tags-column 0)
   (org-agenda-block-separator ?─)
@@ -248,7 +247,7 @@
 
 (use-package org-present
   :straight t
-  :general
+  :init
   (+map "oP" :keymaps 'org-mode-map #'org-present)
   :config
   (setq org-present-text-scale 2.5)

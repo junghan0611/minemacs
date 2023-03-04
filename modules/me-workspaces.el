@@ -21,7 +21,8 @@
   (tabspaces-include-buffers '("*scratch*"))
   (tabspaces-session t)
   (tabspaces-session-auto-restore t)
-  :config
+  (tabspaces-session-file (+directory-ensure (concat minemacs-local-dir "tabspaces/session.el")))
+  :init
   (+map :infix "q"
     "t" #'tabspaces-save-session
     "T" #'tabspaces-restore-session)
@@ -36,7 +37,7 @@
     "r" #'tabspaces-remove-current-buffer
     "R" #'tabspaces-remove-selected-buffer
     "k" #'tabspaces-kill-buffers-close-workspace)
-
+  :config
   (defun +consult-tabspaces ()
     "Deactivate isolated buffers when not using tabspaces."
     (require 'consult)
@@ -72,7 +73,6 @@
 
 (use-package tab-bar
   :straight (:type built-in)
-  :defer t
   :custom
   (tab-bar-format '(tab-bar-format-history
                     tab-bar-format-tabs

@@ -4,15 +4,20 @@
 
 ;; Author: Abdelhak Bougouffa <abougouffa@fedoraproject.org>
 
+(setq
+ ;; Base directory
+ straight-base-dir minemacs-local-dir
+ ;; Add Emacs version to the build directory to avoid problems
+ straight-build-dir (format "build-%s" emacs-version)
+ ;; Use the "develop" branch on straight.el's repo
+ straight-repository-branch "develop"
+ ;; Do not clone all project history, just the last worktree (--depth 1)
+ straight-vc-git-default-clone-depth '(1 single-branch)
+ ;; I don't modify packages installed from straight, so don't wast me time
+ straight-check-for-modifications nil)
 
-(setq package-enable-at-startup nil)
-
-(setq straight-base-dir minemacs-local-dir
-      straight-repository-branch "develop"
-      straight-vc-git-default-clone-depth '(1 single-branch)
-      straight-build-dir (format "build-%s" emacs-version)
-      straight-check-for-modifications nil)
-
+;; Bootstraping straight.el
+;; See: github.com/radian-software/straight.el#bootstrapping-straightel
 (defvar bootstrap-version)
 (let ((bootstrap-file (concat straight-base-dir "straight/repos/straight.el/bootstrap.el"))
       (bootstrap-version 6))
@@ -25,10 +30,15 @@
       (eval-print-last-sexp)))
   (load bootstrap-file nil 'nomessage))
 
+;; Configure `use-package'
 (let ((use-package-recipe ; prefer built-in `use-package' in Emacs 29+
        (if (>= emacs-major-version 29) '(use-package :type built-in) 'use-package)))
   (straight-use-package use-package-recipe))
 
-(setq use-package-verbose minemacs-verbose)
+(setq
+ ;; Set `use-package' to verbose when MinEmacs is started in verbose mode
+ use-package-verbose minemacs-verbose
+ ;; Defer loading packages by default, use `:demand' to force loading a package
+ use-package-always-defer t)
 
 (provide 'me-bootstrap)

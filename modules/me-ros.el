@@ -4,17 +4,20 @@
 
 ;; Author: Abdelhak Bougouffa <abougouffa@fedoraproject.org>
 
+(defconst +rosbag-available-p (or (executable-find "mcap")
+                                  (executable-find "mcap-cli")
+                                  (executable-find "rosbag")
+                                  (executable-find "ros2")))
 
-(with-eval-after-load 'minemacs-loaded
-  (add-to-list 'auto-mode-alist '("\\.rviz\\'"   . conf-unix-mode))
-  (add-to-list 'auto-mode-alist '("\\.urdf\\'"   . xml-mode))
-  (add-to-list 'auto-mode-alist '("\\.xacro\\'"  . xml-mode))
-  (add-to-list 'auto-mode-alist '("\\.launch\\'" . xml-mode))
-
-  ;; Use gdb-script-mode for msg and srv files
-  (add-to-list 'auto-mode-alist '("\\.msg\\'"    . gdb-script-mode))
-  (add-to-list 'auto-mode-alist '("\\.srv\\'"    . gdb-script-mode))
-  (add-to-list 'auto-mode-alist '("\\.action\\'" . gdb-script-mode))
+(+deferred-when! +rosbag-available-p
+  (dolist (ext-mode '(("\\.rviz\\'"   . conf-unix-mode)
+                      ("\\.urdf\\'"   . xml-mode)
+                      ("\\.xacro\\'"  . xml-mode)
+                      ("\\.launch\\'" . xml-mode)
+                      ("\\.msg\\'"    . gdb-script-mode)
+                      ("\\.srv\\'"    . gdb-script-mode)
+                      ("\\.action\\'" . gdb-script-mode)))
+    (add-to-list 'auto-mode-alist ext-mode))
 
   ;; A mode to display info from ROS bag files (via MCAP)
   (define-derived-mode rosbag-info-mode conf-colon-mode "ROS bag"
@@ -50,28 +53,23 @@
 
 ;; Needed by ros.el
 (use-package kv
-  :straight t
-  :defer t)
+  :straight t)
 
 (use-package string-inflection
-  :straight t
-  :defer t)
+  :straight t)
 
 (use-package with-shell-interpreter
-  :straight t
-  :defer t)
+  :straight t)
 
 (when (< emacs-major-version 29)
   (use-package docker-tramp
-    :straight t
-    :defer t))
+    :straight t))
 
 ;; ROS package
 (use-package ros
   :straight (:host github :repo "DerBeutlin/ros.el")
-  :general
-  (+map
-    :infix "o"
+  :init
+  (+map :infix "o"
     "r"  '(nil :wk "ros")
     "rr" '(+hydra-ros-main/body :wk "Hydra")
     "rs" '(ros-set-workspace :wk "Set workspace")

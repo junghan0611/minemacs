@@ -11,47 +11,64 @@
   :init
   (defvar yas-verbosity 2)
   :custom
+  (yas-snippet-dirs nil)
   (yas-triggers-in-field t))
 
 (use-package cape-yasnippet
   :straight (:host github :repo "elken/cape-yasnippet")
-  :hook ((prog-mode text-mode conf-mode) . +cape-yasnippet--setup-h)
   :after cape yasnippet
-  :defines +cape-yasnippet--setup-h
+  :demand t
   :config
   ;; To avoid auto-expanding snippets
   (plist-put cape-yasnippet--properties :exit-function #'always)
   (defun +cape-yasnippet--setup-h ()
     (when (and (bound-and-true-p yas-minor-mode))
-      (add-to-list 'completion-at-point-functions #'cape-yasnippet t))))
+      (add-to-list 'completion-at-point-functions #'cape-yasnippet t)))
+
+  (dolist (mode-hook '(prog-mode-hook text-mode-hook conf-mode-hook))
+    (add-hook mode-hook #'+cape-yasnippet--setup-h)))
 
 (use-package yasnippet-snippets
   :straight t
-  :after yasnippet)
+  :after yasnippet
+  :demand t)
 
 (use-package doom-snippets
   :straight (:host github :repo "hlissner/doom-snippets" :files ("*.el" "*"))
-  :after yasnippet)
+  :after yasnippet
+  :demand t)
 
 (use-package license-snippets
   :straight t
   :after yasnippet
+  :demand t
   :config
   (license-snippets-init))
 
+(use-package pcache
+  :straight t
+  :init
+  (setq pcache-directory (concat minemacs-local-dir "pcache/")))
+
 (use-package unicode-fonts
   :straight t
-  :hook (minemacs-after-startup . unicode-fonts-setup)
+  :hook (minemacs-after-startup . +unicode-fonts-initialize)
   :config
-  (when (daemonp)
-    (add-hook
-     'server-after-make-frame-hook
-     (defun +unicode-fonts--setup-once-h ()
-       (when (display-graphic-p)
-         (unicode-fonts-setup)
-         (remove-hook
-          'server-after-make-frame-hook
-          #'+unicode-fonts--setup-once-h))))))
+  (defun +unicode-fonts-initialize ()
+    "Set up `unicode-fonts' to eventually run; accommodating the daemon, if necessary."
+    (if (display-graphic-p)
+        (+unicode-fonts-setup-font (selected-frame))
+      (add-hook 'after-make-frame-functions #'+unicode-fonts-setup-font)))
+
+  (defun +unicode-fonts-setup-font (&optional frame)
+    "Initialize `unicode-fonts', if in a GUI session.
+If doom-unicode-font is set, add it as preferred font for all unicode blocks."
+    (when (and frame (display-graphic-p frame))
+      (with-selected-frame frame
+        (when-let ((unicode-font-family (plist-get minemacs-fonts :unicode-font-family)))
+          (dolist (unicode-block unicode-fonts-block-font-mapping)
+            (push unicode-font-family (cadr unicode-block))))
+        (unicode-fonts-setup)))))
 
 (use-package ligature
   :straight t
@@ -80,10 +97,6 @@
                 "?=" "?." "??" ";;" "/*" "/=" "/>" "//" "__" "~~" "(*" "*)"
                 "\\\\" "://")))
 
-(use-package page-break-lines
-  :straight t
-  :hook ((prog-mode text-mode) . page-break-lines-mode))
-
 (use-package rainbow-delimiters
   :straight t
   :hook (prog-mode . rainbow-delimiters-mode))
@@ -96,14 +109,18 @@
   :straight t
   :hook (prog-mode . smartparens-mode)
   :config
-  ;; Default `smartparens' configuration (example, do not complete single quote)
-  (require 'smartparens-config)
   (with-eval-after-load 'evil-mc
     ;; Make evil-mc cooperate with smartparens better
     (let ((vars (cdr (assq :default evil-mc-cursor-variables))))
       (unless (memq (car sp--mc/cursor-specific-vars) vars)
         (setcdr (assq :default evil-mc-cursor-variables)
                 (append vars sp--mc/cursor-specific-vars))))))
+
+;; Default `smartparens' configuration (for example, do not complete a single
+;; quote)
+(use-package smartparens-config
+  :after smartparens
+  :demand t)
 
 (use-package goggles
   :straight t

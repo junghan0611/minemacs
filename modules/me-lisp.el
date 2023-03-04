@@ -7,7 +7,7 @@
 
 (use-package parinfer-rust-mode
   :straight t
-  :when (+emacs-features-p 'modules)
+  :when (and (+emacs-features-p 'modules) (eq sys/arch 'x86_64))
   :custom
   (parinfer-rust-library-directory (concat minemacs-local-dir "parinfer-rust/"))
   (parinfer-rust-auto-download (eq sys/arch 'x86_64))
@@ -20,7 +20,6 @@
 
 (use-package slime
   :straight t
-  :defer t
   :config
   (dolist (impl '("lisp"   ; Default Lisp implementation on the system
                   "clisp"  ; GNU CLISP
@@ -38,54 +37,47 @@
   (setq inferior-lisp-program (caar (cdar slime-lisp-implementations))
         slime-default-lisp (caar slime-lisp-implementations)))
 
+;; Scheme
+(use-package geiser
+  :straight t
+  :custom
+  (geiser-default-implementation 'guile))
+
+(use-package geiser-chez
+  :straight t)
+
+(use-package geiser-guile
+  :straight t)
+
+(use-package geiser-mit
+  :straight t)
+
+(use-package geiser-racket
+  :straight t)
+
 (use-package macrostep
   :straight t
-  :general
+  :init
   (+map-local :keymaps 'emacs-lisp-mode-map
     "m" '(macrostep-expand :wk "Expand macro")))
 
 (use-package macrostep-geiser
   :straight t
   :after geiser
-  :general
+  :init
   (+map-local :keymaps '(scheme-mode-map racket-mode-map)
     "m" '(macrostep-geiser-expand-all :wk "Expand macro"))
   :config
   (macrostep-geiser-setup))
 
-;; Scheme
-(use-package geiser
-  :straight t
-  :defer t
-  :custom
-  (geiser-default-implementation 'guile))
-
-(use-package geiser-chez
-  :straight t
-  :defer t)
-
-(use-package geiser-guile
-  :straight t
-  :defer t)
-
-(use-package geiser-mit
-  :straight t
-  :defer t)
-
-(use-package geiser-racket
-  :straight t
-  :defer t)
-
 (use-package racket-mode
-  :straight t
-  :defer t)
+  :straight t)
 
-;; TODO: Add elisp-def
 (use-package elisp-mode
   :straight (:type built-in)
   :hook (emacs-lisp-mode . (lambda () (setq-local tab-width 8))) ;; to view built-in packages correctly
   :after minemacs-loaded ;; prevent elisp-mode from being loaded too early
-  :general
+  :config
   (+map-local :keymaps '(emacs-lisp-mode-map lisp-interaction-mode-map)
     "d"   '(nil :wk "edebug")
     "df"  'edebug-defun
@@ -124,6 +116,7 @@
 
 (use-package me-elisp-extras
   :after elisp-mode minemacs-loaded
+  :demand t
   :config
   (+elisp-indent-setup)
   (+elisp-highlighting-setup))
@@ -131,18 +124,17 @@
 (use-package elisp-demos
   :straight t
   :after elisp-mode minemacs-loaded
+  :demand t
   :init
-  (advice-add #'describe-function-1 :after #'elisp-demos-advice-describe-function-1)
-  (advice-add #'helpful-update :after #'elisp-demos-advice-helpful-update)
-  :general
-  (+map
-    :infix "he"
+  (+map :infix "he"
     "d" #'elisp-demos-find-demo
-    "D" #'elisp-demos-add-demo))
+    "D" #'elisp-demos-add-demo)
+  (advice-add #'describe-function-1 :after #'elisp-demos-advice-describe-function-1)
+  (advice-add #'helpful-update :after #'elisp-demos-advice-helpful-update))
 
 (use-package helpful
   :straight t
-  :general
+  :init
   (+map :keymaps 'emacs-lisp-mode-map
     :infix "h"
     "p" #'helpful-at-point
@@ -158,6 +150,7 @@
 (use-package eros
   :straight t
   :after elisp-mode minemacs-loaded
+  :demand t
   :custom
   (eros-eval-result-prefix "⟹ ")
   :config

@@ -10,15 +10,13 @@
 
 (use-package svg-lib
   :straight t
-  :defer t
   :custom
   (svg-lib-icons-dir (concat minemacs-cache-dir "svg-lib/icons/")))
 
 (use-package writeroom-mode
   :straight t
-  :general
-  (+map "tw" #'writeroom-mode)
   :init
+  (+map "tw" #'writeroom-mode)
   (defvar +writeroom-text-scale 1.7
     "The text-scaling level for `writeroom-mode'.")
   (defvar +writeroom-enable-mixed-pitch t
@@ -75,20 +73,20 @@
      (defun +writeroom--scale-up-latex-h ()
        (setq-local +writeroom-org-format-latex-scale
                    (plist-get org-format-latex-options :scale))
-       (set (make-local-variable 'org-format-latex-options)
-            (plist-put org-format-latex-options
-                       :scale (if (+emacs-features-p 'pgtk) 1.4 2.1)))))
+       (setq org-format-latex-options
+             (plist-put org-format-latex-options
+                        :scale (if (+emacs-features-p 'pgtk) 1.4 2.1)))))
 
     (add-hook
      'writeroom-mode-disable-hook
      (defun +writeroom--scale-down-latex-h ()
-       (set (make-local-variable 'org-format-latex-options)
-            (plist-put org-format-latex-options
-                       :scale (or +writeroom-org-format-latex-scale 1.0)))))))
+       (setq org-format-latex-options
+             (plist-put org-format-latex-options
+                        :scale (or +writeroom-org-format-latex-scale 1.0)))))))
 
 (use-package mixed-pitch
   :straight t
-  :general
+  :init
   (+map "tm" #'mixed-pitch-mode)
   :custom
   (mixed-pitch-variable-pitch-cursor t)
@@ -130,9 +128,13 @@
                    font-lock-comment-face
                    font-lock-comment-delimiter-face)))))
 
+(use-package page-break-lines
+  :straight t
+  :hook ((prog-mode text-mode special-mode) . page-break-lines-mode))
+
 (use-package focus
   :straight t
-  :general
+  :init
   (+map "tF" #'focus-mode))
 
 

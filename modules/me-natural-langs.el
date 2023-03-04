@@ -5,18 +5,18 @@
 ;; Author: Abdelhak Bougouffa <abougouffa@fedoraproject.org>
 
 
-(defconst ASPELL-P (executable-find "aspell"))
+(defconst +aspell-available-p (executable-find "aspell"))
 
 (use-package spell-fu
   :straight t
-  :when ASPELL-P
-  :general
-  (+map "ts" #'spell-fu-mode)
-  (+map-key "z=" #'+spell-fu-correct) ;; autoloaded from "me-spell-fu.el"
+  :when +aspell-available-p
   :hook (text-mode . spell-fu-mode)
   :custom
   (spell-fu-directory (+directory-ensure (concat minemacs-local-dir "spell-fu/")))
   :init
+  (+map "ts" #'spell-fu-mode)
+  (+map-key "z=" #'+spell-fu-correct) ;; autoloaded from "me-spell-fu.el"
+
   (defvar +spell-excluded-faces-alist
     '((markdown-mode
        . (markdown-code-face
@@ -73,22 +73,21 @@
 (use-package go-translate
   :straight (:host github :repo "lorniu/go-translate")
   :commands +gts-yank-translated-region +gts-translate-with
+  :init
+  (+map-local :keymaps '(org-mode-map text-mode-map markdown-mode-map
+                         tex-mode-map TeX-mode-map latex-mode-map LaTeX-mode-map)
+    :infix "t"
+    "b" `(,(+cmdfy! (+gts-translate-with 'bing)) :wk "Translate with Bing")
+    "d" `(,(+cmdfy! (+gts-translate-with 'deepl)) :wk "Translate with DeepL")
+    "g" `(,(+cmdfy! (+gts-translate-with))) :wk "Translate with Google"
+    "r" #'+gts-yank-translated-region
+    "t" #'gts-do-translate)
   :custom
   ;; Your languages pairs
   (gts-translate-list '(("en" "fr")
                         ("en" "ar")
                         ("fr" "ar")
                         ("fr" "en")))
-  :general
-  (+map-local :keymaps '(org-mode-map text-mode-map markdown-mode-map
-                         tex-mode-map TeX-mode-map latex-mode-map LaTeX-mode-map)
-    "R" '(+gts-yank-translated-region :wk "Yank translated region")
-    "G" '(nil "go-translate")
-    "Gb" `(,(+cmdfy! (+gts-translate-with 'bing)) :wk "Bing")
-    "Gd" `(,(+cmdfy! (+gts-translate-with 'deepl)) :wk "DeepL")
-    "Gg" `(,(+cmdfy! (+gts-translate-with))) :wk "Google"
-    "GR" '(+gts-yank-translated-region :wk "Yank translated region")
-    "Gt" '(gts-do-translate :wk "gts-do-translate"))
   :config
   ;; Config the default translator, which will be used by the command `gts-do-translate'
   (setq gts-default-translator
@@ -155,10 +154,14 @@
 
 (use-package lexic
   :straight t
-  :general
-  (+map
-    "sl" #'lexic-search-word-at-point
-    "sL" #'lexic-search)
+  :preface
+  (defconst +sdcv-available-p (executable-find "sdcv"))
+  :when +sdcv-available-p
+  :init
+  (+map :infix "s"
+    "l" #'lexic-search-word-at-point
+    "L" #'lexic-search)
+  :config
   (+map-local :keymaps 'lexic-mode-map
     "q" #'lexic-return-from-lexic
     "RET" #'lexic-search-word-at-point
@@ -188,6 +191,7 @@
 ;;                    (additionalRules . ((languageModel . "/usr/share/ngrams/")))))))))
 (use-package me-eglot-ltex-extras
   :after eglot
+  :demand t
   :config
   (eglot-ltex-enable-handling-client-commands)
   (+eglot-register '(org-mode latex-mode LaTeX-mode markdown-mode text-mode) "ltex-ls"))

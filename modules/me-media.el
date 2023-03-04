@@ -8,16 +8,16 @@
 (use-package empv
   :straight (:host github :repo "isamert/empv.el")
   :preface
-  (defconst MPV-P (executable-find "mpv"))
-  :when MPV-P
-  :general
-  (+map
-    "ov"  '(nil :wk "empv")
-    "ovp" '(empv-play :wk "Play")
-    "ovy" '(consult-empv-youtube :wk "Seach Youtube")
-    "ovr" '(empv-play-radio :wk "Play radio")
-    "ovs" '(empv-playtlist-save-to-file :wk "Save current playlist")
-    "ovD" '(+empv-download-playtlist-files :wk "Download current's playlist files"))
+  (defconst +mpv-available-p (executable-find "mpv"))
+  :when +mpv-available-p
+  :init
+  (+map :infix "o"
+    "v"  '(nil :wk "empv")
+    "vp" '(empv-play :wk "Play")
+    "vy" '(consult-empv-youtube :wk "Seach Youtube")
+    "vr" '(empv-play-radio :wk "Play radio")
+    "vs" '(empv-playtlist-save-to-file :wk "Save current playlist")
+    "vD" '(+empv-download-playtlist-files :wk "Download current's playlist files"))
   :custom
   ;; See https://docs.invidious.io/instances/
   (empv-invidious-instance "https://invidious.projectsegfau.lt/api/v1")
@@ -68,8 +68,7 @@
     (empv--playlist-apply #'+empv--dl-playlist path)))
 
 (use-package emms
-  :straight t
-  :defer t)
+  :straight t)
 
 
 (provide 'me-media)

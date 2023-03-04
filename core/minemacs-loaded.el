@@ -1,7 +1,11 @@
-;; -*- lexical-binding: t; -*-
+;; minemacs-loaded.el -*- lexical-binding: t; -*-
 
-;;; Virtual module loaded at end of init.el (after custom.el)
-;;; Used to synchronize loading some other stuff after loading Emacs
+;; Copyright (C) 2022  Abdelhak Bougouffa
+
+;; Author: Abdelhak Bougouffa <abougouffa@fedoraproject.org>
+
+;; Virtual module loaded at end of init.el (after custom-vars.el)
+;; Used to synchronize loading some other stuff after loading Emacs
 
 ;; Run hooks
 (when minemacs-after-startup-hook
@@ -12,9 +16,9 @@
 
 (if minemacs-not-lazy
     (require 'minemacs-lazy)
-  (run-with-idle-timer
-   2 nil ;; 2s
-   (lambda () (require 'minemacs-lazy))))
+  (+eval-when-idle-for! 2
+    (require 'minemacs-lazy)))
 
 (+log! "Providing `minemacs-loaded'.")
+
 (provide 'minemacs-loaded)

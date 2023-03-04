@@ -4,8 +4,7 @@
 (defmacro +error! (msg &rest vars)
   "Log error MSG and VARS using `message'."
   (when (>= minemacs-msg-level 1)
-    `(let ((inhibit-message t))
-      (apply #'message (list (concat "[MinEmacs:Error] " ,msg) ,@vars)))))
+    `(apply #'message (list (concat "[MinEmacs:Error] " ,msg) ,@vars))))
 
 ;;;###autoload
 (defmacro +info! (msg &rest vars)
@@ -18,7 +17,8 @@
 (defmacro +log! (msg &rest vars)
   "Log MSG and VARS using `message' when `minemacs-verbose' is non-nil."
   (when (>= minemacs-msg-level 3)
-    `(apply #'message (list (concat "[MinEmacs:Log] " ,msg) ,@vars))))
+    `(let ((inhibit-message t))
+      (apply #'message (list (concat "[MinEmacs:Log] " ,msg) ,@vars)))))
 
 ;;;###autoload
 (defmacro +debug! (msg &rest vars)
@@ -34,7 +34,7 @@
 
 ;;;###autoload
 (defmacro +fn-inhibit-messages! (fn &optional no-message-log)
-  "Add an advice arount the function FN to suppress messages in echo area.
+  "Add an advice around the function FN to suppress messages in echo area.
 If NO-MESSAGE-LOG is non-nil, do not print any message to *Messages* buffer."
   (let ((advice-fn (make-symbol (format "+%s--inhibit-messages-a" fn))))
     `(advice-add
@@ -98,7 +98,18 @@ If NO-MESSAGE-LOG is non-nil, do not print any message to *Messages* buffer."
                   (or (plist-get minemacs-fonts :variable-pitch-font-family)
                    (plist-get minemacs-default-fonts :variable-pitch-font-family))
                   (or (plist-get minemacs-fonts :variable-pitch-font-size)
-                   (plist-get minemacs-default-fonts :variable-pitch-font-size)))))))))
+                   (plist-get minemacs-default-fonts :variable-pitch-font-size))))))))
+  ;; Run hooks
+  (run-hooks 'minemacs-after-set-fonts-hook))
+
+;;;###autoload
+(defun +load-theme ()
+  (interactive)
+  (when minemacs-theme
+    (+log! "Loading user theme: %s" minemacs-theme)
+    (load-theme minemacs-theme t))
+  ;; Run hooks
+  (run-hooks 'minemacs-after-load-theme-hook))
 
 ;;;###autoload
 (defun +push-system-dependencies (&rest deps)
@@ -166,7 +177,88 @@ If NO-MESSAGE-LOG is non-nil, do not print any message to *Messages* buffer."
     (lambda ()
       ,@body)))
 
-;; Adapted from github.com/d12frosted/environment
+;;;###autoload
+(defmacro +deferred! (&rest body)
+  "Run BODY after Emacs gets loaded, a.k.a. after `minemacs-loaded'."
+  `(add-hook 'minemacs-after-startup-hook (lambda () ,@body)))
+
+;;;###autoload
+(defmacro +deferred-when! (condition &rest body)
+  "Like `+deferred!', with BODY executed only if CONDITION is non-nil."
+  (declare (indent 1))
+  `(if ,condition (+deferred! ,@body) nil))
+
+;;;###autoload
+(defmacro +deferred-unless! (condition &rest body)
+  "Like `+deferred!', with BODY executed only if CONDITION is nil."
+  (declare (indent 1))
+  `(if ,condition nil (+deferred! ,@body)))
+
+;;;###autoload
+(defmacro +deferred-or-immediate! (condition &rest body)
+  "Like `+deferred!', with BODY deferred if CONDITION is non-nil, otherwise it acts like `progn'."
+  (declare (indent 1))
+  `(if ,condition (+deferred! ,@body) (progn ,@body)))
+
+;;;###autoload
+(defmacro +lazy! (&rest body)
+  "Run BODY as a lazy block (see `minemacs-lazy')."
+  `(add-hook 'minemacs-lazy-hook (lambda () ,@body)))
+
+;;;###autoload
+(defmacro +lazy-when! (condition &rest body)
+  "Like `+lazy!', with BODY executed only if CONDITION is non-nil."
+  (declare (indent 1))
+  `(if ,condition (+lazy! ,@body) nil))
+
+;;;###autoload
+(defmacro +lazy-unless! (condition &rest body)
+  "Like `+lazy!', with BODY executed only if CONDITION is nil."
+  (declare (indent 1))
+  `(if ,condition nil (+lazy! ,@body)))
+
+;;;###autoload
+(defmacro +lazy-or-immediate! (condition &rest body)
+  "Like `+lazy!', with BODY deferred if CONDITION is non nil, otherwise it acts like `progn'."
+  (declare (indent 1))
+  `(if ,condition (+lazy! ,@body) (progn ,@body)))
+
+;; PERF+HACK At some point, MinEmacs startup become too slow, specially when
+;; initializing `general' and `evil'. After trying several configurations, I
+;; figured out that deferring `general' solves the issue. However, deferring
+;; `general' means that we cannot define the keybindings when loading other
+;; packages, i.e. before `general' gets loaded and the MinEmacs definers (i.e.
+;; `+minemacs--internal-map', `+minemacs--internal-map-local' and
+;; `+minemacs--internal-map-key') are made available. We overcome this by
+;; defining these macros to define the keybindings by wrapping the actual
+;; definition in a `with-eval-after-load' block to be evaluated only after
+;; `general' gets loaded and configured and the definers are ready (See
+;; `me-keybindings').
+;;;###autoload
+(defmacro +map (&rest args)
+  "A wrapper around `+minemacs--internal-map'.
+It is deferred until `general' gets loaded and configured."
+  (declare (indent defun))
+  `(with-eval-after-load 'me-general-ready
+    (+minemacs--internal-map ,@args)))
+
+;;;###autoload
+(defmacro +map-local (&rest args)
+  "A wrapper around `+minemacs--internal-map-local'.
+It is deferred until `general' gets loaded and configured."
+  (declare (indent defun))
+  `(with-eval-after-load 'me-general-ready
+    (+minemacs--internal-map-local ,@args)))
+
+;;;###autoload
+(defmacro +map-key (&rest args)
+  "A wrapper around `+minemacs--internal-map-key'.
+It is deferred until `general' gets loaded and configured."
+  (declare (indent defun))
+  `(with-eval-after-load 'me-general-ready
+    (+minemacs--internal-map-key ,@args)))
+
+;; Adapted from: github.com/d12frosted/environment
 ;;;###autoload
 (defmacro +hook-with-delay! (hook secs function &optional depth local)
   "Add the FUNCTION to the value of HOOK.
@@ -175,15 +267,14 @@ triggered.
 DEPTH and LOCAL are passed as is to `add-hook'."
   (let* ((f-name (make-symbol (format "%s-on-%s-delayed-%ds-h" (+unquote function) (+unquote hook) secs)))
          (f-doc (format "Call `%s' in %d seconds" (symbol-name (+unquote function)) secs)))
-    `(progn
-       (eval-when-compile
-         (defun ,f-name () ,f-doc
-          (run-with-idle-timer ,secs nil ,function))
-         (add-hook ,hook #',f-name ,depth ,local)))))
+    `(eval-when-compile
+       (defun ,f-name () ,f-doc
+        (run-with-idle-timer ,secs nil ,function))
+       (add-hook ,hook #',f-name ,depth ,local))))
 
-;; Adapted from `doom-lib'
+;; Adapted from: Doom Emacs
 ;;;###autoload
-(defun +compile-functs (&rest fns)
+(defun +compile-functions (&rest fns)
   "Queue FNS to be byte/natively-compiled after a brief delay."
   (dolist (fn fns)
     (+eval-when-idle!
@@ -196,6 +287,8 @@ DEPTH and LOCAL are passed as is to `add-hook'."
 
 ;;;###autoload
 (defun +env-save ()
+  "Load environment variables of the current session to the file
+  \".emacs.d/local/system-env.el\"."
   (interactive)
   (with-temp-buffer
     (insert ";; -*- mode: emacs-lisp; no-byte-compile: t; no-native-compile: t; -*-\n\n")
@@ -222,6 +315,8 @@ DEPTH and LOCAL are passed as is to `add-hook'."
 
 ;;;###autoload
 (defun +env-load ()
+  "Load environment variables from the file saved in
+  \".emacs.d/local/system-env.el\" if available."
   (interactive)
   (let ((env-file (concat minemacs-local-dir "system-env.el")))
     (when (file-exists-p env-file)
@@ -232,6 +327,4 @@ DEPTH and LOCAL are passed as is to `add-hook'."
   "Add ROOTS to ignored projects, recentf, etc."
   (dolist (root roots)
     (with-eval-after-load 'recentf
-      (add-to-list 'recentf-exclude root))
-    (with-eval-after-load 'projectile
-      (add-to-list '+projectile-ignored-roots root))))
+      (add-to-list 'recentf-exclude root))))

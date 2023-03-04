@@ -7,6 +7,7 @@
 
 (use-package evil
   :straight t
+  :hook (minemacs-after-startup . evil-mode)
   :preface
   (setq evil-want-keybinding nil)
   :custom
@@ -17,16 +18,8 @@
   (evil-vsplit-window-right t)
   (evil-kill-on-visual-paste nil)
   (evil-respect-visual-line-mode t)
-  (evil-normal-state-cursor 'box)
-  (evil-visual-state-cursor 'hollow)
-  (evil-insert-state-cursor '(bar . 2))
-  (evil-emacs-state-cursor '(hbar . 2))
   (evil-ex-interactive-search-highlight 'selected-window)
   :config
-  ;; 'evil-search may cause problems with org-fold
-  ;; https://github.com/emacs-evil/evil/issues/1630
-  (evil-select-search-module 'evil-search-module 'isearch)
-  (evil-mode 1)
   ;; Ask for a buffer when splitting windows
   (with-eval-after-load 'consult
     (dolist (fn '(evil-window-split evil-window-vsplit))
@@ -38,6 +31,7 @@
 (use-package evil-collection
   :straight t
   :after evil minemacs-loaded
+  :demand t
   :config
   (evil-collection-init
    (seq-filter
@@ -63,7 +57,7 @@
 
 (use-package evil-numbers
   :straight t
-  :general
+  :init
   (+map-key
     :states '(normal)
     "g+" #'evil-numbers/inc-at-pt
@@ -77,8 +71,12 @@
 
 (use-package evil-nerd-commenter
   :straight t
-  :general
+  :commands evilnc-comment-operator
+  :init
   (+map-key "gc" #'evilnc-comment-operator))
 
+(use-package evil-escape
+  :straight t
+  :hook (evil-mode . evil-escape-mode))
 
 (provide 'me-evil)

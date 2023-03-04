@@ -10,7 +10,6 @@
   :magic ("%PDF" . pdf-view-mode)
   :mode ("\\.pdf\\'" . pdf-view-mode)
   :config
-  (pdf-tools-install t t t)
   (setq-default pdf-view-display-size 'fit-page
                 pdf-view-image-relief 2
                 pdf-view-use-scaling t))
@@ -18,12 +17,11 @@
 (use-package nov
   :straight t
   :mode ("\\.epub\\'" . nov-mode)
-  :general
-  (+map-key :keymaps 'nov-mode-map :states 'normal
-    "RET" #'nov-scroll-up)
   :custom
   (nov-save-place-file (concat minemacs-local-dir "nov/save-place.el"))
   :config
+  (+map-key :keymaps 'nov-mode-map :states 'normal
+    "RET" #'nov-scroll-up)
   (defun doom-modeline-segment--nov-info ()
     (concat " " (propertize (cdr (assoc 'creator nov-metadata))
                             'face 'doom-modeline-project-parent-dir)
@@ -80,27 +78,26 @@
 
 (use-package crdt
   :straight t
-  :defer t
   :preface
-  (defconst TUNTOX-P (executable-find "tuntox"))
-  (defconst STUNNEL-P (executable-find "stunnel"))
+  (defconst +tuntox-available-p (executable-find "tuntox"))
+  (defconst +stunnel-available-p (executable-find "stunnel"))
+  :when (or +tuntox-available-p +stunnel-available-p)
   :init
-  (cond (TUNTOX-P
+  (cond (+tuntox-available-p
          (setq crdt-use-tuntox t
                crdt-tuntox-password-in-url t))
-        (STUNNEL-P
+        (+stunnel-available-p
          (setq crdt-use-stunnel t))))
+
+(defconst +easydraw-available-p (+emacs-features-p 'rsvg 'zlib 'libxml2))
 
 (use-package edraw
   :straight (:host github :repo "misohena/el-easydraw")
-  :defer t
-  :preface
-  (defconst EASYDRAW-P (+emacs-features-p 'rsvg 'zlib 'libxml2))
-  :when EASYDRAW-P)
+  :when +easydraw-available-p)
 
 (use-package edraw-org
   :hook (org-mode . edraw-org-setup-default)
-  :when EASYDRAW-P)
+  :when +easydraw-available-p)
 
 (use-package markdown-mode
   :straight t

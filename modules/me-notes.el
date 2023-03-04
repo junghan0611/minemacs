@@ -7,8 +7,7 @@
 
 (use-package org-roam
   :straight t
-  :after org minemacs-loaded
-  :general
+  :init
   (+map :infix "n"
     "f" #'org-roam-node-find
     "r" #'org-roam-ref-find
@@ -17,42 +16,27 @@
 
 (use-package org-roam-ui
   :straight t
-  :general
-  (+map
-    "nR" '(org-roam-ui-open :wk "Org-Roam UI")))
+  :init
+  (+map "nR" #'org-roam-ui-open))
 
-;; From https://org-roam.discourse.group/t/configure-deft-title-stripping-to-hide-org-roam-template-headers/478/10
-(use-package deft
+(use-package consult-org-roam
   :straight t
   :after org-roam
-  :general
-  (+map
-    "nd" '(deft :wk "Deft"))
+  :demand t
   :init
-  (setq deft-default-extension "org")
+  (+map :infix "n"
+    "s" #'consult-org-roam-search
+    "l" #'consult-org-roam-forward-links
+    "b" #'consult-org-roam-backlinks
+    "F" #'consult-org-roam-file-find)
   :custom
-  (deft-directory org-roam-directory)
-  (deft-recursive t)
-  (deft-use-filter-string-for-filename t)
-  (deft-strip-summary-regexp
-   (rx (group
-        (or (any ?\n ?\t) ;; blanks
-            (seq bol "#+" (one-or-more (any alpha ?_)) ":" (zero-or-more not-newline) eol) ;; org-mode metadata
-            (seq bol ":PROPERTIES:" ?\n (one-or-more (group (one-or-more not-newline) ?\n)) ":END:" ?\n) ;; org-roam ID
-            (seq bol ":properties:" ?\n (one-or-more (group (one-or-more not-newline) ?\n)) ":end:" ?\n) ;; org-roam ID
-            (seq "[[" (group (zero-or-more not-newline) "]")))))) ;; any link
+  (consult-org-roam-grep-func #'consult-ripgrep)
+  (consult-org-roam-buffer-narrow-key ?r) ; custom narrow key for `consult-buffer'
+  (consult-org-roam-buffer-after-buffers t)
   :config
-  (defun +deft-parse-title (file contents)
-    "Parse the given FILE and CONTENTS and determine the title.
-     If `deft-use-filename-as-title' is nil, the title is taken to
-     be the first non-empty line of the FILE.  Else the base name of the FILE is
-     used as title."
-    (let ((begin (string-match "^#\\+[tT][iI][tT][lL][eE]: .*$" contents)))
-      (if begin
-          (string-trim (substring contents begin (match-end 0)) "#\\+[tT][iI][tT][lL][eE]: *" "[\n\t ]+")
-        (deft-base-filename file))))
-
-  (advice-add 'deft-parse-title :override #'+deft-parse-title))
+  (consult-org-roam-mode 1)
+  ;; Eventually suppress previewing for certain functions
+  (consult-customize consult-org-roam-forward-links :preview-key (kbd "M-.")))
 
 
 (provide 'me-notes)

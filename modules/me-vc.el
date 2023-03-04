@@ -5,19 +5,17 @@
 ;; Author: Abdelhak Bougouffa <abougouffa@fedoraproject.org>
 
 
-(add-to-list 'auto-mode-alist '("\\.gitignore\\'" . conf-mode))
-
 (use-package magit
   :straight t
-  :general
-  (+map
-    :infix "g"
+  :init
+  (+map :infix "g"
     "g" #'magit-status
     "C" #'magit-clone
     "b" #'magit-blame
     "l" #'magit-log
     "d" #'magit-diff-dwim
-    "d" #'magit-stage)
+    "d" #'magit-stage
+    "i" #'magit-init)
   :custom
   (magit-diff-refine-hunk t)
   (magit-revision-show-gravatars t)
@@ -33,11 +31,13 @@
   ;; Needed to set `forge-database-connector' to `sqlite-builtin'
   (use-package emacsql-sqlite-builtin
     :straight t
-    :after magit))
+    :after magit
+    :demand t))
 
 (use-package forge
   :straight t
   :after magit
+  :demand t
   :init
   ;; Keybindings will be overriten by evil-collection
   (setq forge-add-default-bindings nil)
@@ -45,9 +45,18 @@
   (forge-database-connector (if (+emacs-features-p 'sqlite3) 'sqlite-builtin 'sqlite))
   (forge-database-file (concat minemacs-local-dir "forge/database.sqlite")))
 
+(use-package emojify ;; Needed by `code-review'
+  :straight t
+  :custom
+  (emojify-emoji-set "emojione-v2.2.6")
+  (emojify-emojis-dir (concat minemacs-cache-dir "emojify/emojis/"))
+  (emojify-display-style 'image)
+  (emojify-download-emojis-p t))
+
 (use-package code-review
   :straight t
   :after magit
+  :demand t
   :custom
   (code-review-download-dir (concat minemacs-cache-dir "code-review/"))
   (code-review-db-database-file (concat minemacs-local-dir "code-review/database.sqlite"))
@@ -67,7 +76,7 @@
   :hook (dired-mode   . diff-hl-dired-mode)
   :hook (vc-dir-mode  . diff-hl-dir-mode)
   :hook (diff-hl-mode . diff-hl-flydiff-mode)
-  :general
+  :init
   (+map "gs" #'diff-hl-stage-current-hunk)
   :custom
   (diff-hl-draw-borders nil)
@@ -77,9 +86,8 @@
 
 (use-package git-timemachine
   :straight t
-  :general
-  (+map
-    "gt" '(git-timemachine-toggle :wk "Time machine"))
+  :init
+  (+map "gt" #'git-timemachine-toggle)
   :custom
   (git-timemachine-show-minibuffer-details t))
 
@@ -87,6 +95,7 @@
 ;; See https://chris.beams.io/posts/git-commit/
 (use-package git-commit
   :after magit
+  :demand t
   :custom
   (git-commit-summary-max-length 50)
   (git-commit-style-convention-checks '(overlong-summary-line non-empty-second-line))
@@ -106,9 +115,14 @@
        (evil-insert-state))))
   (global-git-commit-mode 1))
 
+(use-package git-modes
+  :straight t
+  :init
+  (add-to-list 'auto-mode-alist '("/.dockerignore\\'" . gitignore-mode)))
+
 (use-package smerge-mode
   :straight t
-  :general
+  :init
   (+map "gm" '(+smerge-hydra/body :wk "sMerge"))
   :config
   (defhydra +smerge-hydra (:hint nil
@@ -156,9 +170,9 @@
 (use-package repo
   :straight t
   :preface
-  (defconst REPO-P (executable-find "repo"))
-  :when REPO-P
-  :general
+  (defconst +repo-available-p (executable-find "repo"))
+  :when +repo-available-p
+  :init
   (+map "gr" #'repo-status))
 
 

@@ -7,33 +7,29 @@
 
 (add-to-list 'auto-mode-alist '("\\.mailrc\\'" . conf-space-mode))
 
-(defconst MU4E-LOAD-PATH "/usr/share/emacs/site-lisp/mu4e/")
+(defconst +mu4e-load-path "/usr/share/emacs/site-lisp/mu4e/")
+
+(defconst +mu4e-available-p
+  (and (executable-find "mu")
+       (executable-find "msmtp")
+       (executable-find "mbsync")
+       (file-directory-p +mu4e-load-path)))
 
 (use-package mu4e
-  :preface
-  (defconst MU4E-P
-    (and (executable-find "mu")
-         (executable-find "msmtp")
-         (executable-find "mbsync")
-         (file-directory-p MU4E-LOAD-PATH)))
-  :when MU4E-P
-  :load-path MU4E-LOAD-PATH
-  :commands mu4e-compose-new mu4e--start
-  :hook (mu4e-headers-mode . (lambda () (visual-line-mode -1)))
-  :general
+  :when +mu4e-available-p
+  :load-path +mu4e-load-path
+  :commands mu4e-compose-new mu4e--start mu4e
+  :hook (mu4e-headers-mode . (lambda ()
+                               (visual-line-mode -1)
+                               (display-line-numbers-mode -1)))
+  :init
   (+map "om" #'mu4e)
-  (+map-key :keymaps 'mu4e-view-mode-map
-    "p" #'mu4e-view-save-attachments)
-  (+map-local :keymaps '(mu4e-compose-mode-map org-msg-edit-mode-map)
-    "s" #'message-send-and-exit
-    "d" #'message-kill-buffer
-    "S" #'message-dont-send)
   :custom
   (mu4e-confirm-quit nil)
   (mu4e-search-results-limit 1000)
   (mu4e-index-cleanup t)
-  (mu4e-attachment-dir "~/Downloads/mu4e-attachements")
-  (mu4e-update-interval (* 3 60)) ;; Every 3 min
+  (mu4e-attachment-dir "~/Downloads/mu4e-attachements/")
+  (mu4e-update-interval (* 1 60)) ;; Every 1 min
   (mu4e-context-policy 'pick-first) ;; Start with the first context
   (mu4e-compose-context-policy 'ask) ;; Always ask which context to use when composing a new mail
   (mu4e-sent-messages-behavior 'sent) ;; Will be overwritten for Gmail accounts
@@ -55,6 +51,13 @@
   (mail-user-agent 'mu4e-user-agent)
   (read-mail-command 'mu4e)
   :config
+  (+map-key :keymaps 'mu4e-view-mode-map
+    "p" #'mu4e-view-save-attachments)
+  (+map-local :keymaps '(mu4e-compose-mode-map org-msg-edit-mode-map)
+    "s" #'message-send-and-exit
+    "d" #'message-kill-buffer
+    "S" #'message-dont-send)
+
   ;; No need to display a long list of my own addresses!
   (setq mu4e-main-hide-personal-addresses t)
 
@@ -65,18 +68,30 @@
      (+info! "Getting new emails")
      (apply origfn '(t)))))
 
+;; Reply to iCalendar meeting requests
+(use-package mu4e-icalendar
+  :when +mu4e-available-p
+  :load-path +mu4e-load-path
+  :after mu4e
+  :demand t
+  :config
+  (mu4e-icalendar-setup))
+
 (use-package me-mu4e-ui
   :after mu4e
+  :demand t
   :config
   (+mu4e-ui-setup)) ;; Setup UI
 
 (use-package me-mu4e-gmail
   :after mu4e
+  :demand t
   :config
   (+mu4e-gmail-setup)) ;; Gmail specifics
 
 (use-package me-mu4e-extras
   :after mu4e
+  :demand t
   :config
   (+mu4e-extras-setup)) ;; Extra features
 
@@ -84,15 +99,6 @@
   :straight t
   :after mu4e
   :demand t
-  :general
-  (+map-key :keymaps 'org-msg-edit-mode-map
-    "TAB" #'org-msg-tab
-    "gg"  #'org-msg-goto-body)
-  (+map-local :keymaps 'org-msg-edit-mode-map
-    "a"  '(nil :wk "attach")
-    "aa" #'org-msg-attach-attach
-    "ad" #'org-msg-attach-delete
-    "p"  #'org-msg-preview)
   :custom
   (org-msg-options "html-postamble:nil H:5 num:nil ^:{} toc:nil author:nil email:nil tex:dvipng")
   (org-msg-startup "hidestars indent inlineimages")
@@ -109,13 +115,20 @@
            (seq (or (seq "pi" (any ?è ?e) "ce") "fichier" "document") (? "s") (+ (or " " eol)) "joint" (? "e") (? "s")) ;; pièce jointe
            (seq (or (seq space "p" (zero-or-one (any ?- ?.)) "j" space)))))) ;; p.j
   :config
-  ;; Setup Org-msg for mu4e
-  (org-msg-mode-mu4e)
+  (+map-key :keymaps 'org-msg-edit-mode-map
+    "TAB" #'org-msg-tab
+    "gg"  #'org-msg-goto-body)
+  (+map-local :keymaps 'org-msg-edit-mode-map
+    "a"  '(nil :wk "attach")
+    "aa" #'org-msg-attach-attach
+    "ad" #'org-msg-attach-delete
+    "p"  #'org-msg-preview)
   (org-msg-mode 1))
 
 (use-package mu4e-alert
   :straight t
   :after mu4e
+  :demand t
   :custom
   (mu4e-alert-icon "/usr/share/icons/Papirus/64x64/apps/mail-client.svg")
   (mu4e-alert-set-window-urgency nil)
@@ -123,6 +136,7 @@
   (mu4e-alert-email-notification-types '(subjects))
   (mu4e-alert-interesting-mail-query "flag:unread AND NOT flag:trashed AND NOT maildir:/*junk AND NOT maildir:/*spam")
   :config
+  ;; Enable on mu4e notifications in doom-modeline
   (setq doom-modeline-mu4e t)
   (mu4e-alert-enable-mode-line-display)
   (mu4e-alert-enable-notifications)

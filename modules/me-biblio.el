@@ -8,6 +8,7 @@
 (use-package oc
   :straight (:type built-in)
   :after org
+  :demand t
   :custom
   (org-cite-export-processors '((latex biblatex) (t csl)))
   (org-support-shift-select t)
@@ -17,22 +18,24 @@
 
 (use-package oc-csl
   :straight (:type built-in)
-  :after oc)
+  :after oc
+  :demand t)
 
 (use-package oc-natbib
   :straight (:type built-in)
-  :after oc)
+  :after oc
+  :demand t)
 
 (use-package oc-biblatex
   :straight (:type built-in)
-  :after oc)
+  :after oc
+  :demand t)
 
 (use-package zotxt
   :straight t
-  :defer t
   :preface
-  (defconst ZOTERO-P (executable-find "zotero"))
-  :when ZOTERO-P
+  (defconst +zotero-available-p (executable-find "zotero"))
+  :when +zotero-available-p
   :init
   (+map-local :keymaps 'org-mode-map
     "z" #'org-zotxt-mode)
@@ -42,6 +45,7 @@
 (use-package citar
   :straight t
   :after oc
+  :demand t
   :custom
   (org-cite-insert-processor 'citar)
   (org-cite-follow-processor 'citar)
@@ -68,6 +72,7 @@
 (use-package citar-org-roam
   :straight t
   :after citar org-roam
+  :demand t
   :commands +org-roam-node-from-cite
   :config
   ;; Modified form: https://jethrokuan.github.io/org-roam-guide/
@@ -82,9 +87,9 @@
                             :if-new (file+head "references/${citekey}.org"
                                      ,(concat
                                        ":properties:\n"
-                                       "  :roam_refs: [cite:@${citekey}]\n"
-                                       "  :end:\n"
-                                       "  #+title: ${title}\n"))
+                                       ":roam_refs: [cite:@${citekey}]\n"
+                                       ":end:\n"
+                                       "#+title: ${title}\n"))
                             :immediate-finish t
                             :unnarrowed t))
                          :info (list :citekey entry-key)
@@ -95,8 +100,9 @@
 (use-package citar-embark
   :straight t
   :after citar embark
+  :demand t
   :config
-  (citar-embark-mode))
+  (citar-embark-mode 1))
 
 
 (provide 'me-biblio)

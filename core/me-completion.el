@@ -8,13 +8,14 @@
 (use-package cape
   :straight t
   :after minemacs-loaded
+  :demand t
   :config
-  (add-to-list 'completion-at-point-functions #'cape-file) ;; complete file names
-  (add-to-list 'completion-at-point-functions #'cape-tex) ;; complete TeX commands
-  (add-to-list 'completion-at-point-functions #'cape-dabbrev)
-  (add-to-list 'completion-at-point-functions #'cape-ispell)
-  (add-to-list 'completion-at-point-functions #'cape-symbol)
-  (add-to-list 'completion-at-point-functions #'cape-keyword))
+  (dolist (fn '(cape-tex ; TeX commands
+                cape-file ; File names
+                cape-ispell ; Words from Ispell
+                cape-symbol ; Elisp symbols
+                cape-keyword)) ; Keywords
+    (add-to-list 'completion-at-point-functions fn)))
 
 (use-package corfu
   :straight t
@@ -38,7 +39,7 @@
   (defun +corfu-enable-in-minibuffer ()
     "Enable Corfu in the minibuffer if `completion-at-point' is bound."
     (when (where-is-internal #'completion-at-point (list (current-local-map)))
-      (setq-local corfu-auto nil) ;; Enable/disable auto completion
+      (setq-local corfu-auto nil) ; Enable/disable auto completion
       (corfu-mode 1)))
 
   (add-hook 'minibuffer-setup-hook #'+corfu-enable-in-minibuffer))
@@ -57,7 +58,7 @@
   :hook (corfu-mode . corfu-history-mode)
   :config
   (unless (bound-and-true-p savehist-mode)
-    (savehist-mode +1))
+    (savehist-mode 1))
   (add-to-list 'savehist-additional-variables 'corfu-history))
 
 (use-package corfu-terminal
@@ -67,38 +68,74 @@
 (use-package kind-icon
   :straight t
   :after corfu
+  :demand t
   :custom
-  ;; Fix the scaling/height
-  (kind-icon-default-style '(:padding 0 :stroke 0 :margin 0 :radius 0 :height 0.8 :scale 1.05))
-  (kind-icon-use-icons (+emacs-features-p 'rsvg)) ; Only on Emacs built with SVG support
+  (kind-icon-default-style '(:padding 0
+                             :stroke 0
+                             :margin 0
+                             :radius 0
+                             :height 0.8
+                             :scale 1.05)) ; Fix the scaling/height
+  (kind-icon-use-icons (+emacs-features-p 'rsvg)) ; Use icons only in Emacs built with SVG support
   (kind-icon-default-face 'corfu-default) ; Have background color be the same as `corfu' face background
   (kind-icon-blend-background nil) ; Use midpoint color between foreground and background colors ("blended")?
   :config
   (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
+
+(use-package consult
+  :straight t
+  :hook (embark-collect-mode . consult-preview-at-point-mode)
+  :init
+  (define-key minibuffer-local-map (kbd "C-r") 'consult-history)
+  (define-key minibuffer-local-map (kbd "S-C-v") 'consult-yank-pop)
+  (global-set-key (kbd "C-s") 'consult-line)
+  (+map
+    ;; Buffers
+    "bl"  #'consult-line
+    "bb"  #'consult-buffer
+    "bmM" #'consult-bookmark
+    ;; Files
+    "fr"  #'consult-recent-file
+    ;; Search
+    "ss"  #'consult-ripgrep
+    "sg"  #'consult-grep
+    "sf"  #'consult-find
+    "sM"  #'consult-man
+    "st"  #'consult-locate
+    ;; Code
+    "cx"  #'consult-xref
+    "cm"  #'consult-flymake
+    ;; Insert
+    "iy"  #'consult-yank-pop
+    ;; Help
+    "hu"  #'consult-theme)
+  :config
+  (setq-default completion-in-region-function #'consult-completion-in-region))
 
 (use-package embark
   :straight t
   :init
   (global-set-key [remap describe-bindings] #'embark-bindings)
   (setq prefix-help-command #'embark-prefix-help-command)
-  :general
   (+map "." #'embark-act))
 
 (use-package embark-consult
   :straight t
-  :after embark consult)
-
-(use-package all-the-icons-completion
-  :straight t
-  :hook (marginalia-mode . all-the-icons-completion-marginalia-setup))
+  :after embark consult
+  :demand t)
 
 (use-package marginalia
   :straight t
   :hook (minemacs-after-startup . marginalia-mode))
 
+(use-package all-the-icons-completion
+  :straight t
+  :hook (marginalia-mode . all-the-icons-completion-marginalia-setup))
+
 (use-package orderless
   :straight t
   :after minemacs-loaded
+  :demand t
   :custom
   (completion-styles '(orderless basic))
   (completion-category-overrides '((file (styles basic partial-completion)))))
@@ -122,10 +159,7 @@
 
 (use-package vertico-directory
   :after vertico
-  :custom
-  (vertico-buffer-display-action
-   `(display-buffer-at-bottom
-     (window-height . ,(+ 3 vertico-count))))
+  :demand t
   :config
   (define-key vertico-map "\r" #'vertico-directory-enter)
   (define-key vertico-map "\d" #'vertico-directory-delete-char)
@@ -137,35 +171,6 @@
 
 (use-package vertico-repeat
   :hook (minibuffer-setup . vertico-repeat-save))
-
-(use-package consult
-  :straight t
-  :init
-  (define-key minibuffer-local-map (kbd "C-r") 'consult-history)
-  (define-key minibuffer-local-map (kbd "S-C-v") 'consult-yank-pop)
-  (global-set-key (kbd "C-s") 'consult-line)
-  :hook (embark-collect-mode . consult-preview-at-point-mode)
-  :general
-  (+map
-    ;; Buffers
-    "bl"  #'consult-line
-    "bb"  #'consult-buffer
-    "bmM" #'consult-bookmark
-    ;; Files
-    "fr"  #'consult-recent-file
-    ;; Search
-    "ss"  #'consult-ripgrep
-    "sM"  #'consult-man
-    "st"  #'consult-locate
-    ;; Code
-    "cx"  #'consult-xref
-    "cm"  #'consult-flymake
-    ;; Insert
-    "iy"  #'consult-yank-pop
-    ;; Help
-    "hu"  #'consult-theme)
-  :config
-  (setq-default completion-in-region-function #'consult-completion-in-region))
 
 
 (provide 'me-completion)

@@ -5,7 +5,7 @@
 ;; Author: Abdelhak Bougouffa <abougouffa@fedoraproject.org>
 
 
-(defun +theme--tweaks-h (&rest _args)
+(defun +theme--tweaks-h (&optional _)
   "Use smaller font (75% of the default) for line numbers in graphic mode."
   (when (display-graphic-p)
     (set-face-attribute
@@ -37,26 +37,8 @@ Useful for keeping track of the enabled theme."
    "Disable previously enabled themes before enabling the new one."
    (mapc #'disable-theme custom-enabled-themes)))
 
-;; Icons
-(use-package all-the-icons
-  :straight t
-  :defer t
-  :config
-  ;; Show .m files as matlab/octave files
-  (setcdr (assoc "m" all-the-icons-extension-icon-alist)
-          (cdr (assoc "matlab" all-the-icons-extension-icon-alist))))
-
-(use-package doom-themes
-  :straight t
-  :config
-  (load-theme 'doom-one-light t)
-  (defun +doom-one-toggle ()
-    (interactive)
-    (load-theme (if (eq minemacs-theme 'doom-one) 'doom-one-light 'doom-one) t)))
-
 (use-package modus-themes
   :straight (:host github :repo "protesilaos/modus-themes")
-  :defer t
   :config
   ;; In all of the following, WEIGHT is a symbol such as `semibold',
   ;; `light', `bold', or anything mentioned in `modus-themes-weights'.
@@ -125,9 +107,19 @@ Useful for keeping track of the enabled theme."
   ;; Load the theme of your choice.
   (load-theme 'modus-operandi-tinted t))
 
-;; Modeline
+(use-package all-the-icons
+  :straight t
+  :config
+  ;; Show .m files as matlab/octave files
+  (setcdr (assoc "m" all-the-icons-extension-icon-alist)
+          (cdr (assoc "matlab" all-the-icons-extension-icon-alist))))
+
+(use-package doom-themes
+  :straight t)
+
 (use-package doom-modeline
   :straight t
+  :hook (minemacs-after-startup . doom-modeline-mode)
   :custom
   (doom-modeline-height 35)
   (doom-modeline-bar-width 8)
@@ -135,14 +127,13 @@ Useful for keeping track of the enabled theme."
   (doom-modeline-buffer-encoding 'nondefault)
   (doom-modeline-unicode-fallback t)
   :config
-  ;; Add padding
+  ;; FIX Add some padding to the right
   (doom-modeline-def-modeline 'main
     '(bar workspace-name window-number modals matches follow buffer-info
       remote-host buffer-position word-count parrot selection-info)
     '(objed-state misc-info persp-name battery grip irc mu4e gnus github debug
       repl lsp minor-modes input-method indent-info buffer-encoding major-mode
-      process vcs checker time "   "))
-  (doom-modeline-mode 1))
+      process vcs checker time "   ")))
 
 
 (provide 'me-core-ui)

@@ -7,18 +7,9 @@
 
 (use-package lsp-mode
   :straight t
-  :hook ((c++-mode
-          c++-ts-mode
-          c-mode c-ts-mode
-          python-mode python-ts-mode
-          rust-mode cmake-mode) . lsp-deferred)
   :preface
   (setq lsp-use-plists t)
-  :general
-  (+map
-    :infix "c"
-    "l"  '(nil :wk "lsp session")
-    "ll" #'lsp)
+  :commands +lsp-auto-enable
   :custom
   (lsp-session-file (concat minemacs-local-dir "lsp/session.el"))
   (lsp-server-install-dir (concat minemacs-local-dir "lsp/servers/"))
@@ -39,7 +30,26 @@
   (lsp-trim-trailing-whitespace nil)
   (lsp-insert-final-newline nil)
   (lsp-trim-final-newlines nil)
+  :init
+  (+map
+    :infix "c"
+    "l"  '(nil :wk "lsp session")
+    "ll" #'lsp
+    "lA" #'+lsp-auto-enable)
+  (defvar +lsp-auto-enable-modes
+    '(c++-mode c++-ts-mode c-mode c-ts-mode
+      python-mode python-ts-mode
+      rust-mode cmake-mode
+      js-mode js-ts-mode typescript-mode typescript-ts-mode
+      json-mode json-ts-mode js-json-mode))
   :config
+  (defun +lsp-auto-enable ()
+    (interactive)
+    (dolist (mode +lsp-auto-enable-modes)
+      (let ((hook (intern (format "%s-hook" mode))))
+        (add-hook hook #'lsp-deferred)
+        (remove-hook hook #'eglot-ensure))))
+
   (+map :keymaps 'lsp-mode-map
     :infix "c"
     "fF" #'lsp-format-buffer
@@ -55,8 +65,6 @@
 
 (use-package ccls
   :straight t
-  :after lsp-mode
-  :disabled t
   :custom
   ;; https://github.com/MaskRay/ccls/wiki/Customization#initialization-options
   ;; https://github.com/MaskRay/ccls/blob/master/src/config.hh
@@ -87,18 +95,20 @@
 
 (use-package lsp-pyright
   :straight t
-  :after lsp-mode)
+  :after lsp-mode
+  :demand t)
 
 (use-package consult-lsp
   :straight t
   :after consult lsp-mode
+  :demand t
   :config
   (+map :keymaps 'lsp-mode-map
     "cs" '(consult-lsp-file-symbols :wk "Symbols")))
 
 (use-package dap-mode
   :straight t
-  :general
+  :init
   (+map-local
     :keymaps '(c-mode-map c++-mode-map python-mode-map
                rust-mode-map sh-mode-map bash-ts-mode-map
@@ -116,23 +126,28 @@
   (dap-auto-show-output nil))
 
 (use-package dap-gdb-lldb
-  :after dap-mode)
+  :after dap-mode
+  :demand t)
 
 (use-package dap-cpptools
   :after dap-mode
+  :demand t
   :custom
   (dap-cpptools-extension-version "1.13.8"))
 
 (use-package dap-codelldb
   :after dap-mode
+  :demand t
   :custom
   (dap-codelldb-extension-version "1.8.1"))
 
 (use-package dap-python
-  :after dap-mode)
+  :after dap-mode
+  :demand t)
 
 (use-package dap-mouse
-  :after dap-mode)
+  :after dap-mode
+  :demand t)
 
 
 (provide 'me-lsp)

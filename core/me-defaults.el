@@ -1,18 +1,26 @@
-;; me-defaults.el --- MinEmacs -*- lexical-binding: t; -*-
+;; me-defaults.el --- MinEmacs defaults for Emacs -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2022  Abdelhak Bougouffa
 
 ;; Author: Abdelhak Bougouffa <abougouffa@fedoraproject.org>
 
+;; Inhibit startup message in echo area the brutal way!
+;; The `inhibit-startup-echo-area-message' variable is very restrictive, there
+;; is only one unique way of setting it right!
+;; See: https://www.reddit.com/r/emacs/comments/6e9o4o/comment/di8q1t5
+(fset 'display-startup-echo-area-message #'ignore)
 
 ;;; Why use anything but UTF-8?
-(set-charset-priority 'unicode)
 (prefer-coding-system 'utf-8)
+(set-locale-environment "en_US.UTF-8")
+(set-language-environment "Latin-1")
+(set-charset-priority 'unicode)
 (set-default-coding-systems 'utf-8)
 (set-terminal-coding-system 'utf-8)
 (set-keyboard-coding-system 'utf-8)
-(set-language-environment 'utf-8)
-(set-selection-coding-system (if (eq system-type 'windows-nt) 'utf-16-le 'utf-8))
+;; Use UTF-16-LE in Windows
+;; See: https://rufflewind.com/2014-07-20/pasting-unicode-in-emacs-on-windows
+(set-selection-coding-system (if os/win 'utf-16-le 'utf-8))
 
 (setq
  ;; ====== Default directories for builtin packages ======
@@ -63,8 +71,6 @@
  ;; ====== Default behavior ======
  ;; Inhibit startup message
  inhibit-startup-message t
- ;; Inhibit startup message in echo area
- inhibit-startup-echo-area-message (user-login-name) ;; BUG not working!
  ;; Do not ring
  ring-bell-function 'ignore
  ;; Increase the large file threshold to 50 MiB
@@ -95,6 +101,8 @@
  completions-detailed t
  ;; Do not ask obvious questions, follow symlinks
  vc-follow-symlinks t
+ ;; Display the true file name for symlinks
+ find-file-visit-truename t
  ;; Use completing-read interface instead of definitions buffer (needs xref 1.1.0)
  xref-show-definitions-function #'xref-show-definitions-completing-read
  ;; Enable recursive calls to minibuffer
@@ -115,6 +123,8 @@
  auth-source-cache-expiry 86400
 
  ;; ====== Performances ======
+ ;; Don’t compact font caches during GC
+ inhibit-compacting-font-caches t
  ;; Increase single chunk bytes to read from subprocess (default 4096)
  read-process-output-max (if os/linux
                              (condition-case nil
@@ -134,6 +144,8 @@
  frame-resize-pixelwise t
  ;; Stretch cursor to the glyph width
  x-stretch-cursor t
+ ;; Show trailing whitespaces
+ show-trailing-whitespace t
  ;; Resize window combinations proportionally
  window-combination-resize t
  ;; Enable time in the mode-line
@@ -268,173 +280,192 @@
  ;; Save buffer status
  desktop-save-buffer t)
 
-(unless (featurep 'me-org-export-async-init)
-  (with-eval-after-load 'minemacs-loaded
-    ;; Ensure creating "session.ID" in a sub-directory
-    (with-eval-after-load 'x-win
-      (advice-add
-       #'emacs-session-filename :filter-return
-       (defun +emacs-session-filename--customize-a (filename)
-         ;; Create the directory
-         (concat minemacs-local-dir "emacs-session/" (file-name-nondirectory filename)))))
+(defcustom +whitespace-auto-cleanup-modes
+  '(prog-mode conf-mode org-mode markdown-mode
+    latex-mode tex-mode bibtex-mode)
+  "Enable auto whitespace cleanup before saving for these derived modes."
+  :group 'minemacs)
 
-    ;; Close compilation buffer if succeeded without warnings
-    ;; Adapted from: http://stackoverflow.com/questions/11043004/emacs-compile-buffer-auto-close
-    (add-hook
-     'compilation-finish-functions
-     (defun +compilation--bury-if-successful-h (buf str)
-       "Bury a compilation buffer if succeeded without warnings."
-       (when (and
-              (string-match "compilation" (buffer-name buf))
-              (string-match "finished" str)
-              (not (with-current-buffer buf
-                     (save-excursion
-                       (goto-char (point-min))
-                       (search-forward "warning" nil t)))))
-         (run-with-timer
-          2 nil
-          (lambda (b)
-            (with-selected-window (get-buffer-window b)
-              (kill-buffer-and-window))) buf))))
-
+;; When MinEmacs is running in an asynchronous Org export context, there is no
+;; need to enable these modes. So we load them only if we haven't been launched
+;; through the `me-org-export-async-init' file.
+;; All modes and tweaks are enabled after MinEmacs is gets loaded
+(+deferred-unless! (featurep 'me-org-export-async-init)
+  ;; ====== Misc hooks and advices ======
+  ;; Advice `emacs-session-filename' to ensure creating "session.ID" files in
+  ;; a sub-directory
+  (with-eval-after-load 'x-win
     (advice-add
-     'term-sentinel :around
-     (defun +term--kill-after-exit-a (orig-fn proc msg)
-       (if (memq (process-status proc) '(signal exit))
-           (let ((buffer (process-buffer proc)))
-             (apply orig-fn (list proc msg))
-             (kill-buffer buffer))
-         (apply orig-fn (list proc msg)))))
+     #'emacs-session-filename :filter-return
+     (defun +emacs-session-filename--in-subdir-a (session-filename)
+       "Put the SESSION-FILENAME in the \"x-win/\" subdirectory."
+       (concat (+directory-ensure (concat minemacs-local-dir "x-win/"))
+               (file-name-nondirectory session-filename)))))
 
-    ;;; Modes enabled locally, mainly for `prog-mode', `conf-mode' and `text-mode'
-    ;; Show line numbers
-    (add-hook 'prog-mode-hook #'display-line-numbers-mode)
-    (add-hook 'conf-mode-hook #'display-line-numbers-mode)
-    (add-hook 'text-mode-hook #'display-line-numbers-mode)
+  ;; Auto-close the compilation buffer if succeeded without warnings.
+  ;; Adapted from: stackoverflow.com/questions/11043004/emacs-compile-buffer-auto-close
+  (add-hook
+   'compilation-finish-functions
+   (defun +compilation--bury-if-successful-h (buf str)
+     "Bury a compilation buffer if succeeded without warnings."
+     (when (and
+            (string-match "compilation" (buffer-name buf))
+            (string-match "finished" str)
+            (not (with-current-buffer buf
+                   (save-excursion
+                     (goto-char (point-min))
+                     (search-forward "warning" nil t)))))
+       (run-with-timer
+        2 nil
+        (lambda (b)
+          (with-selected-window (get-buffer-window b)
+            (kill-buffer-and-window)))
+        buf))))
 
-    ;; Highlight the current line
-    (add-hook 'prog-mode-hook #'hl-line-mode)
-    (add-hook 'conf-mode-hook #'hl-line-mode)
-    (add-hook 'text-mode-hook #'hl-line-mode)
+  ;; Kill `term' buffer on exit (reproduce a similar behavior to `shell's
+  ;; `shell-kill-buffer-on-exit').
+  (advice-add
+   'term-sentinel :around
+   (defun +term--kill-after-exit-a (orig-fn proc msg)
+     (if (memq (process-status proc) '(signal exit))
+         (let ((buffer (process-buffer proc)))
+           (apply orig-fn (list proc msg))
+           (kill-buffer buffer))
+       (apply orig-fn (list proc msg)))))
 
-    ;; Hide/show code blocks, a.k.a. code folding
-    (add-hook 'prog-mode-hook #'hs-minor-mode)
-    (add-hook 'conf-mode-hook #'hs-minor-mode)
+  ;; Kill the minibuffer when switching by mouse to another window.
+  ;; Adapted from: trey-jackson.blogspot.com/2010/04/emacs-tip-36-abort-minibuffer-when.html
+  (add-hook
+   'mouse-leave-buffer-hook
+   (defun +minibuffer--kill-on-mouse-h ()
+     "Kill the minibuffer when switching to window with mouse."
+     (when (and (>= (recursion-depth) 1) (active-minibuffer-window))
+       (abort-recursive-edit))))
 
-    ;; Wrap long lines
-    (add-hook 'prog-mode-hook #'visual-line-mode)
-    (add-hook 'conf-mode-hook #'visual-line-mode)
-    (add-hook 'text-mode-hook #'visual-line-mode)
+  ;; Suppress asking about overwriting desktop file when we didn't load a
+  ;; session from desktop file. We advice `save-desktop' to first check if
+  ;; there is a previously saved desktop file, if its found, we move it to a
+  ;; timestamped backup before saving the current one.
+  (advice-add
+   'desktop-save :before
+   (defun +desktop-save--backup-previous-a (dirname &rest _)
+     (let* ((filename (desktop-full-file-name (or dirname desktop-dirname)))
+            (old-modtime (file-attribute-modification-time (file-attributes filename))))
+       (unless (or (not old-modtime) ; nothing to backup
+                   (time-equal-p desktop-file-modtime old-modtime)) ; saved explicitly
+         (rename-file
+          filename
+          (concat (file-name-sans-extension filename)
+                  (format-time-string "-%Y-%m-%d-%H-%M-%S.el" old-modtime))
+          t)))))
 
-    ;;; Other hooks
-    ;; Update time stamp (if available) before saving a file
-    (add-hook 'before-save-hook 'time-stamp)
+  ;; ====== Tweaks on file save ======
+  ;; Update time stamp (if available) before saving a file.
+  (add-hook 'before-save-hook 'time-stamp)
 
-    (defvar +whitespace-auto-cleanup-modes
-      '(prog-mode conf-mode org-mode markdown-mode
-        latex-mode tex-mode bibtex-mode)
-      "Enable auto whitespace cleanup before saving for these derived modes.")
+  ;; Auto-remove trailing white spaces before saving for modes defined in
+  ;; `+whitespace-auto-cleanup-modes'.
+  (add-hook
+   'before-save-hook
+   (defun +save--whitespace-cleanup-h ()
+     (when (cl-some #'derived-mode-p +whitespace-auto-cleanup-modes)
+       (whitespace-cleanup))))
 
-    ;; Remove trailing whitespaces on save for some modes
-    (add-hook
-     'before-save-hook
-     (defun +save--whitespace-cleanup-h ()
-       (when (cl-some #'derived-mode-p +whitespace-auto-cleanup-modes)
-         (whitespace-cleanup))))
-
-    ;; Guess major mode when saving a file (adapted from Doom Emacs)
-    (add-hook
-     'after-save-hook
-     (defun +save--guess-file-mode-h ()
-       "Guess major mode when saving a file in `fundamental-mode'.
+  ;; Guess the major mode after saving a file in `fundamental-mode' (adapted
+  ;; from Doom Emacs).
+  (add-hook
+   'after-save-hook
+   (defun +save--guess-file-mode-h ()
+     "Guess major mode when saving a file in `fundamental-mode'.
 Likely, something has changed since the buffer was opened. e.g. A shebang line
 or file path may exist now."
-       (when (eq major-mode 'fundamental-mode)
-         (let ((buffer (or (buffer-base-buffer) (current-buffer))))
-           (and (buffer-file-name buffer)
-                (eq buffer (window-buffer (selected-window))) ;; Only visible buffers
-                (set-auto-mode))))))
+     (when (eq major-mode 'fundamental-mode)
+       (let ((buffer (or (buffer-base-buffer) (current-buffer))))
+         (and (buffer-file-name buffer)
+              (eq buffer (window-buffer (selected-window))) ;; Only visible buffers
+              (set-auto-mode))))))
 
-    ;; Kill minibuffer when switching by mouse to another window
-    ;; Taken from: https://trey-jackson.blogspot.com/2010/04/emacs-tip-36-abort-minibuffer-when.html
-    (add-hook
-     'mouse-leave-buffer-hook
-     (defun +minibuffer--kill-on-mouse-h ()
-       "Kill the minibuffer when switching to window with mouse."
-       (when (and (>= (recursion-depth) 1) (active-minibuffer-window))
-         (abort-recursive-edit))))
+  ;; ====== Modes enabled locally, mainly for `prog-mode', `conf-mode' and `text-mode' ======
+  ;; Show line numbers
+  (add-hook 'prog-mode-hook #'display-line-numbers-mode)
+  (add-hook 'conf-mode-hook #'display-line-numbers-mode)
+  (add-hook 'text-mode-hook #'display-line-numbers-mode)
 
-    ;; Avoid asking about overwriting desktop file when we didn't load a session
-    ;; from desktop file. We check if there is a previous saved desktop, if
-    ;; found, we move it to a timestamped backup before saving the current one.
-    (advice-add
-     'desktop-save :before
-     (defun +desktop-save--backup-previous-a (dirname &rest _)
-       (let* ((filename (desktop-full-file-name (or dirname desktop-dirname)))
-              (old-modtime (file-attribute-modification-time (file-attributes filename))))
-         (unless (or (not old-modtime) ; nothing to backup
-                     (time-equal-p desktop-file-modtime old-modtime)) ; saved explicitly
-           (rename-file
-            filename
-            (concat (file-name-sans-extension filename)
-                    (format-time-string "-%Y-%m-%d-%H-%M-%S.el" old-modtime))
-            t)))))
+  ;; Highlight the current line
+  (add-hook 'prog-mode-hook #'hl-line-mode)
+  (add-hook 'conf-mode-hook #'hl-line-mode)
+  (add-hook 'text-mode-hook #'hl-line-mode)
 
-    ;; Navigate windows using Shift+Direction
-    (windmove-default-keybindings)
+  ;; Hide/show code blocks, a.k.a. code folding
+  (add-hook 'prog-mode-hook #'hs-minor-mode)
+  (add-hook 'conf-mode-hook #'hs-minor-mode)
 
-    ;;; Enable some modes globally
-    ;; Enable battery (if available) in mode-line
-    (+shutup!
-     (let ((battery-str (battery)))
-       (unless (or (equal "Battery status not available" battery-str)
-                   (string-match-p "unknown" battery-str)
-                   (string-match-p "N/A" battery-str))
-         (display-battery-mode 1))))
+  ;; Wrap long lines
+  (add-hook 'prog-mode-hook #'visual-line-mode)
+  (add-hook 'conf-mode-hook #'visual-line-mode)
+  (add-hook 'text-mode-hook #'visual-line-mode)
 
-    ;; Window layout undo/redo (`winner-undo' / `winner-redo')
-    (winner-mode 1)
+  ;; Navigate windows using Shift+Direction
+  (windmove-default-keybindings)
 
-    ;; Scroll pixel by pixel, in Emacs29+ there is a more pricise mode way to scroll
-    (if (>= emacs-major-version 29)
-        (pixel-scroll-precision-mode 1)
-      (pixel-scroll-mode 1))
+  ;; ====== Modes enabled globally ======
+  ;; Show the battery status (if available) in the mode-line
+  (+shutup!
+   (let ((battery-str (battery)))
+     (unless (or (equal "Battery status not available" battery-str)
+                 (string-match-p "unknown" battery-str)
+                 (string-match-p "N/A" battery-str))
+       (display-battery-mode 1))))
 
-    ;; Display time in mode-line
-    (display-time-mode 1)
+  ;; Fallback the new `fido-vertical-mode' Emacs28+ builtin completion mode if
+  ;; the `me-completion' (which contains `vertico-mode' configuration) core
+  ;; module is not enabled.
+  (unless (memq 'me-completion minemacs-core-modules)
+    (fido-vertical-mode 1))
 
-    ;; Replace selection after start typing
-    (delete-selection-mode 1)
+  ;; Window layout undo/redo (`winner-undo' / `winner-redo')
+  (winner-mode 1)
 
-    ;; Enable recentf-mode globally
-    (+shutup! (recentf-mode 1))
+  ;; Scroll pixel by pixel, in Emacs29+ there is a more pricise mode way to scroll
+  (if (>= emacs-major-version 29)
+      (pixel-scroll-precision-mode 1)
+    (pixel-scroll-mode 1))
 
-    ;; Show recursion depth in minibuffer (see `enable-recursive-minibuffers')
-    (minibuffer-depth-indicate-mode 1)
+  ;; Display time in mode-line
+  (display-time-mode 1)
 
-    ;; Save place in files
-    (save-place-mode 1)
+  ;; Replace selection after start typing
+  (delete-selection-mode 1)
 
-    ;; Save Emacs session
-    (desktop-save-mode 1)
+  ;; Enable `recentf-mode' to remember recent files
+  (+shutup! (recentf-mode 1))
 
-    ;; Enable saving minibuffer history
-    (savehist-mode 1)
+  ;; Show recursion depth in minibuffer (see `enable-recursive-minibuffers')
+  (minibuffer-depth-indicate-mode 1)
 
-    ;; Auto load files changed on disk
-    (global-auto-revert-mode 1)
+  ;; Save place in files
+  (save-place-mode 1)
 
-    ;; Show line number in mode-line
-    (line-number-mode 1)
+  ;; Save Emacs session
+  (desktop-save-mode 1)
 
-    ;; Show column numbers (cursor position) in mode-line
-    (column-number-mode 1)
+  ;; Enable saving minibuffer history
+  (savehist-mode 1)
 
-    ;; Better handling for files with so long lines
-    (global-so-long-mode 1)
+  ;; Auto load files changed on disk
+  (global-auto-revert-mode 1)
 
-    ;; Global SubWord mode
-    (global-subword-mode 1)))
+  ;; Show line number in mode-line
+  (line-number-mode 1)
+
+  ;; Show column numbers (a.k.a. cursor position) in the mode-line
+  (column-number-mode 1)
+
+  ;; Better handling for files with so long lines
+  (global-so-long-mode 1)
+
+  ;; Global SubWord mode
+  (global-subword-mode 1))
 
 
 (provide 'me-defaults)
